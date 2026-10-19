@@ -4,8 +4,8 @@
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
-delete_option( 'nv_eval_opts' );
-delete_option( 'nv_eval_data_lastgood' );
-delete_option( 'nv_eval_fetch' );
-delete_transient( 'nv_eval_data' );
-wp_clear_scheduled_hook( 'nv_eval_daily' );
+delete_option( 'novaria_ev_opts' );
+delete_option( 'novaria_ev_data_lastgood' );
+delete_option( 'novaria_ev_fetch' );
+delete_transient( 'novaria_ev_data' );
+wp_clear_scheduled_hook( 'novaria_ev_daily' );

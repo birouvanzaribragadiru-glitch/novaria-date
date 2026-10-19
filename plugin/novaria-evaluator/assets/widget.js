@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   var E = window.CMA, ZC = window.NV_ZCOMBO;
-  var root = document.getElementById('nv-eval');
+  var root = document.getElementById('novaria-ev');
   if (!root || !E) return;
   var CFG = window.NV_EVAL_CFG || {};
   try { var dc = root.getAttribute('data-cfg'); if (dc) CFG = Object.assign({}, CFG, JSON.parse(dc)); } catch (e) { }
@@ -42,7 +42,7 @@
   // ---------- date ----------
   function loadData() {
     function get(url) { return fetch(url, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (d) { if (!d || !Array.isArray(d.zone)) throw new Error('date'); return d; }); }
-    return get(CFG.dataUrl).catch(function () { return get(CFG.ajaxUrl + '?action=nv_eval_data'); }).catch(function () { return get(CFG.bundledUrl); });
+    return get(CFG.dataUrl).catch(function () { return get(CFG.ajaxUrl + '?action=novaria_ev_data'); }).catch(function () { return get(CFG.bundledUrl); });
   }
   function setData(d) {
     S.data = d;
@@ -58,25 +58,25 @@
   // ---------- formular ----------
   function field(id, label, control, opt) {
     opt = opt || {};
-    var lab = label.trim() ? '<label for="nv-' + id + '">' + esc(label) + (opt.req ? ' <span class="nv-req" aria-hidden="true">*</span>' : '') + (opt.hint ? ' <span class="nv-hint">' + esc(opt.hint) + '</span>' : '') + '</label>' : '';
-    return '<div class="nv-f' + (opt.wide ? ' nv-w' : '') + (opt.cls ? ' ' + opt.cls : '') + '" data-for="' + id + '">' + lab + control + '<div class="nv-err" id="nv-' + id + '-err" aria-live="polite"></div></div>';
+    var lab = label.trim() ? '<label for="nvev-' + id + '">' + esc(label) + (opt.req ? ' <span class="nvev-req" aria-hidden="true">*</span>' : '') + (opt.hint ? ' <span class="nvev-hint">' + esc(opt.hint) + '</span>' : '') + '</label>' : '';
+    return '<div class="nvev-f' + (opt.wide ? ' nvev-w' : '') + (opt.cls ? ' ' + opt.cls : '') + '" data-for="' + id + '">' + lab + control + '<div class="nvev-err" id="nvev-' + id + '-err" aria-live="polite"></div></div>';
   }
-  function sel(id, list, extra) { return '<select class="nv-inp" id="nv-' + id + '" name="' + id + '"' + (extra || '') + '>' + opts(list, S.f[id] != null ? S.f[id] : '') + '</select>'; }
-  function txt(id, ph, unit, extra) { var i = '<input class="nv-inp' + (unit ? ' nv-suf' : '') + '" id="nv-' + id + '" name="' + id + '" type="text" inputmode="decimal" autocomplete="off" value="' + esc(S.f[id] || '') + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + (extra || '') + '>'; return unit ? '<div class="nv-sufw">' + i + '<span>' + esc(unit) + '</span></div>' : i; }
+  function sel(id, list, extra) { return '<select class="nvev-inp" id="nvev-' + id + '" name="' + id + '"' + (extra || '') + '>' + opts(list, S.f[id] != null ? S.f[id] : '') + '</select>'; }
+  function txt(id, ph, unit, extra) { var i = '<input class="nvev-inp' + (unit ? ' nvev-suf' : '') + '" id="nvev-' + id + '" name="' + id + '" type="text" inputmode="decimal" autocomplete="off" value="' + esc(S.f[id] || '') + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + (extra || '') + '>'; return unit ? '<div class="nvev-sufw">' + i + '<span>' + esc(unit) + '</span></div>' : i; }
   function chips(id, list, label) {
-    return '<div class="nv-chips" role="radiogroup" aria-label="' + esc(label) + '" id="nv-' + id + '">' + list.map(function (o) { var on = String(S.f[id] || '') === String(o[0]); return '<button type="button" role="radio" class="nv-chip" aria-checked="' + on + '" data-chip="' + id + '" data-v="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>';
+    return '<div class="nvev-chips" role="radiogroup" aria-label="' + esc(label) + '" id="nvev-' + id + '">' + list.map(function (o) { var on = String(S.f[id] || '') === String(o[0]); return '<button type="button" role="radio" class="nvev-chip" aria-checked="' + on + '" data-chip="' + id + '" data-v="' + esc(o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>';
   }
-  function check(id, label) { return '<label class="nv-ck"><input type="checkbox" name="' + id + '" id="nv-' + id + '"' + (S.f[id] ? ' checked' : '') + '> <span>' + esc(label) + '</span></label>'; }
+  function check(id, label) { return '<label class="nvev-ck"><input type="checkbox" name="' + id + '" id="nvev-' + id + '"' + (S.f[id] ? ' checked' : '') + '> <span>' + esc(label) + '</span></label>'; }
   function zoneSelect() {
     var groups = []; S.zones.forEach(function (z) { if (groups.indexOf(z.grup) < 0) groups.push(z.grup); });
-    return '<select id="nv-zona" name="zona" aria-label="Zona"><option value="">Alege zona</option>' + groups.map(function (g) { return '<optgroup label="' + esc(g.replace('București – ', '')) + '">' + S.zones.filter(function (z) { return z.grup === g; }).map(function (z) { return '<option value="' + esc(z.id) + '"' + (S.f.zona === z.id ? ' selected' : '') + '>' + esc(z.nume) + '</option>'; }).join('') + '</optgroup>'; }).join('') + '</select>';
+    return '<select id="nvev-zona" name="zona" aria-label="Zona"><option value="">Alege zona</option>' + groups.map(function (g) { return '<optgroup label="' + esc(g.replace('București – ', '')) + '">' + S.zones.filter(function (z) { return z.grup === g; }).map(function (z) { return '<option value="' + esc(z.id) + '"' + (S.f.zona === z.id ? ' selected' : '') + '>' + esc(z.nume) + '</option>'; }).join('') + '</optgroup>'; }).join('') + '</select>';
   }
   function isBuc() { var z = S.zmap[S.f.zona]; return !!(z && z.sector); }
 
   function formHTML() {
     var t = S.tip, h = '';
-    h += '<div class="nv-tabs" role="tablist" aria-label="Ce vrei să evaluezi">' + [['apartament', 'Apartament'], ['casa', 'Casă / vilă'], ['teren', 'Teren']].map(function (o) { return '<button type="button" role="tab" class="nv-tab" aria-selected="' + (t === o[0]) + '" data-tip="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>';
-    h += '<div class="nv-grid">';
+    h += '<div class="nvev-tabs" role="tablist" aria-label="Ce vrei să evaluezi">' + [['apartament', 'Apartament'], ['casa', 'Casă / vilă'], ['teren', 'Teren']].map(function (o) { return '<button type="button" role="tab" class="nvev-tab" aria-selected="' + (t === o[0]) + '" data-tip="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="nvev-grid">';
     h += field('zona', 'Zona', zoneSelect(), { req: 1, wide: 1, hint: 'cartierul sau localitatea' });
     if (t === 'apartament') {
       h += field('mp', 'Suprafață utilă', txt('mp', 'ex. 55', 'mp'), { req: 1 });
@@ -96,7 +96,7 @@
     } else {
       h += field('mp', 'Suprafața terenului', txt('mp', 'ex. 500', 'mp'), { req: 1 });
       h += field('intravilan', 'Încadrare', chips('intravilan', [['da', 'Intravilan'], ['nu', 'Extravilan']], 'Încadrare'));
-      h += field('util', 'Utilități la limita terenului', '<div class="nv-cks">' + check('utilCurent', 'Curent') + check('utilApa', 'Apă') + check('utilCanalT', 'Canalizare') + check('utilGazT', 'Gaz') + '</div>', { wide: 1 });
+      h += field('util', 'Utilități la limita terenului', '<div class="nvev-cks">' + check('utilCurent', 'Curent') + check('utilApa', 'Apă') + check('utilCanalT', 'Canalizare') + check('utilGazT', 'Gaz') + '</div>', { wide: 1 });
       h += field('front', 'Front stradal', txt('front', 'ex. 15', 'm'));
       h += field('acces', 'Drum de acces', sel('acces', engOpt('acces')));
     }
@@ -110,7 +110,7 @@
       if (isBuc()) m += field('metrou', 'Până la metrou', sel('metrou', [['', 'Nu știu / nu contează']].concat(E.OPT.metrou.slice(1).map(function (o) { return [o[0], o[1]]; }))));
       var an = num(S.f.an);
       if (!an || an <= 1990) m += field('seismic', 'Risc seismic', sel('seismic', engOpt('seismic')));
-      if (!an || an <= 2005) m += field('anv', ' ', check('anvelopat', 'Bloc reabilitat termic (anvelopat)'), { cls: 'nv-fck' });
+      if (!an || an <= 2005) m += field('anv', ' ', check('anvelopat', 'Bloc reabilitat termic (anvelopat)'), { cls: 'nvev-fck' });
     } else if (t === 'casa') {
       m += field('structura', 'Structura', sel('structura', engOpt('structura')));
       m += field('regim', 'Regim de înălțime', sel('regim', engOpt('regim')));
@@ -119,24 +119,24 @@
       m += field('utilGaz', 'Gaze', sel('utilGaz', DA_NU));
       m += field('asfalt', 'Stradă asfaltată', sel('asfalt', DA_NU));
       m += field('frontC', 'Front stradal', txt('frontC', 'ex. 15', 'm'));
-      m += field('gar', ' ', check('garaj', 'Are garaj'), { cls: 'nv-fck' });
+      m += field('gar', ' ', check('garaj', 'Are garaj'), { cls: 'nvev-fck' });
     } else {
       m += field('destinatie', 'Ce se poate construi', sel('destinatie', engOpt('destinatie')));
-      m += field('frm', ' ', check('neregulat', 'Formă neregulată (nu dreptunghiulară)'), { cls: 'nv-fck' });
+      m += field('frm', ' ', check('neregulat', 'Formă neregulată (nu dreptunghiulară)'), { cls: 'nvev-fck' });
     }
-    m += field('jur', ' ', check('probleme', 'Are probleme juridice (succesiune nefinalizată, neintabulat, sarcini)'), { cls: 'nv-fck nv-w' });
-    h += '<details class="nv-more"' + (S.moreOpen ? ' open' : '') + '><summary>Mai multe detalii <span>opțional, cresc precizia</span></summary><div class="nv-grid">' + m + '</div></details>';
-    h += '<button type="submit" class="nv-btn nv-go">' + (S.shown ? 'Recalculează' : 'Vezi cât valorează') + '</button>';
+    m += field('jur', ' ', check('probleme', 'Are probleme juridice (succesiune nefinalizată, neintabulat, sarcini)'), { cls: 'nvev-fck nvev-w' });
+    h += '<details class="nvev-more"' + (S.moreOpen ? ' open' : '') + '><summary>Mai multe detalii <span>opțional, cresc precizia</span></summary><div class="nvev-grid">' + m + '</div></details>';
+    h += '<button type="submit" class="nvev-btn nvev-go">' + (S.shown ? 'Recalculează' : 'Vezi cât valorează') + '</button>';
     return h;
   }
 
   function renderForm() {
-    var form = $('.nv-form'); if (!form) return;
+    var form = $('.nvev-form'); if (!form) return;
     form.innerHTML = formHTML();
-    var zs = $('#nv-zona');
+    var zs = $('#nvev-zona');
     if (ZC && zs) {
       ZC.attach(zs, {
-        inputClass: 'nv-inp',
+        inputClass: 'nvev-inp',
         placeholder: 'Scrie zona: ex. Drumul Taberei, Bragadiru, Pipera',
         scrollOnFocus: true,
         items: function () { return S.zones.map(function (z) { return { v: z.id, t: z.nume, g: z.grup.replace('București – ', ''), keys: (z.alias || []).concat(z.loc ? [z.loc] : [], z.sector ? ['sector ' + z.sector] : []) }; }); }
@@ -147,8 +147,8 @@
   // ---------- citirea formularului → proprietatea pentru motor ----------
   function readForm() {
     var f = S.f;
-    $$('.nv-form select, .nv-form input[type="text"]').forEach(function (el) { if (el.name) f[el.name] = el.value; });
-    $$('.nv-form input[type="checkbox"]').forEach(function (el) { f[el.name] = el.checked; });
+    $$('.nvev-form select, .nvev-form input[type="text"]').forEach(function (el) { if (el.name) f[el.name] = el.value; });
+    $$('.nvev-form input[type="checkbox"]').forEach(function (el) { f[el.name] = el.checked; });
   }
   function subject() {
     var f = S.f, s = { tip: S.tip, zona: f.zona || '', mp: f.mp || '', juridic: f.probleme ? 'probleme' : 'ok' };
@@ -179,7 +179,7 @@
     if (!mp) { errs.mp = 'Scrie suprafața în mp.'; ok = false; }
     else if (mp < lim[0] || mp > lim[1]) { errs.mp = 'Suprafața pare neobișnuită (între ' + n0(lim[0]) + ' și ' + n0(lim[1]) + ' mp).'; ok = false; }
     if (S.tip === 'casa' && f.teren && (!num(f.teren) || num(f.teren) < 30 || num(f.teren) > 100000)) { errs.teren = 'Verifică suprafața terenului.'; ok = false; }
-    if (show) ['zona', 'mp', 'teren'].forEach(function (k) { var e = $('#nv-' + k + '-err'); if (e) e.textContent = errs[k] || ''; var w = $('[data-for="' + k + '"]'); if (w) w.classList.toggle('nv-bad', !!errs[k]); });
+    if (show) ['zona', 'mp', 'teren'].forEach(function (k) { var e = $('#nvev-' + k + '-err'); if (e) e.textContent = errs[k] || ''; var w = $('[data-for="' + k + '"]'); if (w) w.classList.toggle('nvev-bad', !!errs[k]); });
     return ok ? null : errs;
   }
 
@@ -203,45 +203,46 @@
     return 'Calculat din prețurile de referință ale zonei ' + z.nume + ', actualizate cu evoluția pieței (' + deN(d.anunturi, 'anunțuri') + ' monitorizate în București și Ilfov). Date actualizate pe ' + when + '. Pentru zona ta, o evaluare făcută de un consultant e mai precisă.';
   }
   function renderResult() {
-    var box = $('.nv-result'), x = evaluate(), keep = {};
-    $$('.nv-lead input').forEach(function (i) { keep[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
+    var box = $('.nvev-result'), x = evaluate(), keep = {};
+    $$('.nvev-lead input, .nvev-lead select').forEach(function (i) { keep[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
     S.res = x;
     if (!x) { box.hidden = true; return; }
     box.hidden = false;
     var lead = '';
     if (!S.unlocked) {
-      lead = '<div class="nv-gate"><h4>Primește raportul detaliat, gratuit</h4>' +
-        '<ul class="nv-gets"><li>Prețul pentru vânzare rapidă, prețul realist și prețul de listare recomandat</li><li>Ce crește și ce scade valoarea proprietății tale, în euro</li><li>Cât durează de obicei vânzarea în zonă și ce prețuri se cer acum</li><li>Apoi te sună un consultant Novaria pentru evaluarea completă, pe proprietăți comparabile actuale</li></ul>' +
-        '<form class="nv-lead" novalidate>' +
-        '<div class="nv-grid">' +
-        '<div class="nv-f"><label for="nv-tel">Telefon <span class="nv-req" aria-hidden="true">*</span></label><input class="nv-inp" id="nv-tel" name="telefon" type="tel" inputmode="tel" autocomplete="tel" placeholder="07xx xxx xxx" required><div class="nv-err" id="nv-tel-err" aria-live="polite"></div></div>' +
-        '<div class="nv-f"><label for="nv-nume">Nume <span class="nv-hint">opțional</span></label><input class="nv-inp" id="nv-nume" name="nume" type="text" autocomplete="name"></div>' +
-        '<div class="nv-f nv-w"><label for="nv-email">Email <span class="nv-hint">opțional</span></label><input class="nv-inp" id="nv-email" name="email" type="email" autocomplete="email" inputmode="email"><div class="nv-err" id="nv-email-err" aria-live="polite"></div></div>' +
+      lead = '<div class="nvev-gate"><h4>Primește raportul detaliat, gratuit</h4>' +
+        '<ul class="nvev-gets"><li>Prețul pentru vânzare rapidă, prețul realist și prețul de listare recomandat</li><li>Ce crește și ce scade valoarea proprietății tale, în euro</li><li>Cât durează de obicei vânzarea în zonă și ce prețuri se cer acum</li><li>Apoi te sună un consultant Novaria pentru evaluarea completă, pe proprietăți comparabile actuale</li></ul>' +
+        '<form class="nvev-lead" novalidate>' +
+        '<div class="nvev-grid">' +
+        '<div class="nvev-f"><label for="nvev-tel">Telefon <span class="nvev-req" aria-hidden="true">*</span></label><input class="nvev-inp" id="nvev-tel" name="telefon" type="tel" inputmode="tel" autocomplete="tel" placeholder="07xx xxx xxx" required><div class="nvev-err" id="nvev-tel-err" aria-live="polite"></div></div>' +
+        '<div class="nvev-f"><label for="nvev-nume">Nume <span class="nvev-hint">opțional</span></label><input class="nvev-inp" id="nvev-nume" name="nume" type="text" autocomplete="name"></div>' +
+        '<div class="nvev-f"><label for="nvev-email">Email <span class="nvev-hint">opțional, primești estimarea și pe email</span></label><input class="nvev-inp" id="nvev-email" name="email" type="email" autocomplete="email" inputmode="email"><div class="nvev-err" id="nvev-email-err" aria-live="polite"></div></div>' +
+        '<div class="nvev-f"><label for="nvev-timeline">Când te gândești să vinzi? <span class="nvev-hint">opțional</span></label><select class="nvev-inp" id="nvev-timeline" name="timeline">' + opts([['', 'Alege'], ['acum', 'Cât mai repede'], ['1-3', 'În 1–3 luni'], ['3-6', 'În 3–6 luni'], ['6+', 'Peste 6 luni'], ['info', 'Doar mă informez']], '') + '</select></div>' +
         '</div>' +
-        '<div class="nv-hp" aria-hidden="true"><label>Site web <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>' +
-        '<label class="nv-ck nv-acord"><input type="checkbox" name="acord" id="nv-acord"> <span>Sunt de acord să fiu contactat de Novaria în legătură cu evaluarea proprietății. Datele mele sunt folosite doar pentru asta, conform <a href="' + esc(CFG.privacyUrl || '#') + '" target="_blank" rel="noopener">politicii de confidențialitate</a>.</span></label>' +
-        '<div class="nv-err" id="nv-acord-err" aria-live="polite"></div>' +
-        '<button type="submit" class="nv-btn nv-accent">Trimite și vezi raportul</button>' +
-        '<div class="nv-err nv-send-err" aria-live="polite"></div>' +
+        '<div class="nvev-hp" aria-hidden="true"><label>Site web <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>' +
+        '<label class="nvev-ck nvev-acord"><input type="checkbox" name="acord" id="nvev-acord"> <span>Sunt de acord să fiu contactat de Novaria în legătură cu evaluarea proprietății. Datele mele sunt folosite doar pentru asta, conform <a href="' + esc(CFG.privacyUrl || '#') + '" target="_blank" rel="noopener">politicii de confidențialitate</a>.</span></label>' +
+        '<div class="nvev-err" id="nvev-acord-err" aria-live="polite"></div>' +
+        '<button type="submit" class="nvev-btn nvev-accent">Trimite și vezi raportul</button>' +
+        '<div class="nvev-err nvev-send-err" aria-live="polite"></div>' +
         '</form>' + contactLine('Preferi să vorbim direct?') + '</div>';
     }
     box.innerHTML =
-      '<div class="nv-range" tabindex="-1">' +
-      '<div class="nv-lbl">Valoarea estimată a proprietății</div>' +
-      '<div class="nv-val"><b>' + eur(x.min) + '</b> <span>–</span> <b>' + eur(x.max) + '</b></div>' +
-      '<div class="nv-sub">≈ ' + n0(x.ppm) + ' €/mp · prețul la care se vinde realist ' + (TIP_LBL[S.tip] === 'casă' ? 'o casă' : 'un ' + TIP_LBL[S.tip]) + ' ca al tău în ' + esc(x.z ? x.z.nume : 'zonă') + '</div>' +
+      '<div class="nvev-range" tabindex="-1">' +
+      '<div class="nvev-lbl">Valoarea estimată a proprietății</div>' +
+      '<div class="nvev-val"><b>' + eur(x.min) + '</b> <span>–</span> <b>' + eur(x.max) + '</b></div>' +
+      '<div class="nvev-sub">≈ ' + n0(x.ppm) + ' €/mp · prețul la care se vinde realist ' + (TIP_LBL[S.tip] === 'casă' ? 'o casă' : 'un ' + TIP_LBL[S.tip]) + ' ca al tău în ' + esc(x.z ? x.z.nume : 'zonă') + '</div>' +
       '</div>' +
-      '<p class="nv-basis">' + esc(basisText(x)) + '</p>' +
+      '<p class="nvev-basis">' + esc(basisText(x)) + '</p>' +
       warningsHTML(x, true) +
       (S.unlocked ? reportHTML(x) : lead) +
-      '<p class="nv-disc">Estimare automată, orientativă, pornind de la prețurile cerute în zonă. Nu este un raport de evaluare ANEVAR.</p>';
-    var lf = $('.nv-lead');
-    if (lf) { lf.addEventListener('submit', onLead); $$('input', lf).forEach(function (i) { if (keep[i.name] == null) return; if (i.type === 'checkbox') i.checked = keep[i.name]; else i.value = keep[i.name]; }); }
+      '<p class="nvev-disc">Estimare automată, orientativă, pornind de la prețurile cerute în zonă. Nu este un raport de evaluare ANEVAR.</p>';
+    var lf = $('.nvev-lead');
+    if (lf) { lf.addEventListener('submit', onLead); $$('input, select', lf).forEach(function (i) { if (keep[i.name] == null) return; if (i.type === 'checkbox') i.checked = keep[i.name]; else i.value = keep[i.name]; }); }
   }
   function contactLine(lead) {
     var tel = (CFG.phone || '').replace(/\s+/g, ''), wa = CFG.whatsapp;
     if (!tel && !wa) return '';
-    return '<p class="nv-contact">' + esc(lead) + ' ' + (tel ? '<a href="tel:' + esc(tel) + '">Sună la ' + esc(CFG.phone) + '</a>' : '') + (tel && wa ? ' · ' : '') + (wa ? '<a href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(waText()) + '" target="_blank" rel="noopener">Scrie pe WhatsApp</a>' : '') + '</p>';
+    return '<p class="nvev-contact">' + esc(lead) + ' ' + (tel ? '<a href="tel:' + esc(tel) + '">Sună la ' + esc(CFG.phone) + '</a>' : '') + (tel && wa ? ' · ' : '') + (wa ? '<a href="https://wa.me/' + esc(wa) + '?text=' + encodeURIComponent(waText()) + '" target="_blank" rel="noopener">Scrie pe WhatsApp</a>' : '') + '</p>';
   }
   function waText() {
     var x = S.res; if (!x) return 'Bună ziua, aș dori o evaluare a proprietății mele.';
@@ -251,31 +252,31 @@
   function warningsHTML(x, short) {
     var w = (x.r.warnings || []).filter(function (t) { return !HIDE_WARN.test(t); });
     if (!w.length) return '';
-    return '<ul class="nv-warn">' + w.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    return '<ul class="nvev-warn">' + w.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
   }
   function reportHTML(x) {
     var r = x.r, P = r.prices, tm = P.times || {}, z = x.z, st = z && z.st && z.st[S.tip];
-    var h = '<div class="nv-report"><h4>Raportul detaliat</h4>';
-    h += '<div class="nv-tiers">' +
-      '<div class="nv-tier"><div class="k">Vânzare rapidă</div><div class="v">' + eur(P.quick) + '</div><div class="t">' + esc(tm.quick || '') + '</div></div>' +
-      '<div class="nv-tier on"><div class="k">Preț realist</div><div class="v">' + eur(P.realist) + '</div><div class="t">' + esc(tm.realist || '') + ' · ' + n0(x.ppm) + ' €/mp</div></div>' +
-      '<div class="nv-tier"><div class="k">Preț de listare recomandat</div><div class="v">' + eur(P.list) + '</div><div class="t">lasă loc de negociere · ' + esc(tm.list || '') + '</div></div>' +
+    var h = '<div class="nvev-report"><h4>Raportul detaliat</h4>';
+    h += '<div class="nvev-tiers">' +
+      '<div class="nvev-tier"><div class="k">Vânzare rapidă</div><div class="v">' + eur(P.quick) + '</div><div class="t">' + esc(tm.quick || '') + '</div></div>' +
+      '<div class="nvev-tier on"><div class="k">Preț realist</div><div class="v">' + eur(P.realist) + '</div><div class="t">' + esc(tm.realist || '') + ' · ' + n0(x.ppm) + ' €/mp</div></div>' +
+      '<div class="nvev-tier"><div class="k">Preț de listare recomandat</div><div class="v">' + eur(P.list) + '</div><div class="t">lasă loc de negociere · ' + esc(tm.list || '') + '</div></div>' +
       '</div>';
     var dr = (r.drivers || []).filter(function (d) { return Math.abs(d.eur) >= 300; }).slice(0, 7);
     if (dr.length) {
-      h += '<h5>Ce crește și ce scade valoarea</h5><table class="nv-drv"><tbody>' + dr.map(function (d) { var pos = d.eur >= 0; return '<tr><td>' + esc(d.label) + (d.detail ? '<small>' + esc(d.detail) + '</small>' : '') + '</td><td class="' + (pos ? 'up' : 'down') + '">' + (pos ? '+' : '−') + eur(round(Math.abs(d.eur), 100)) + '</td></tr>'; }).join('') + '</tbody></table>';
-      h += '<p class="nv-note">Față de ' + (S.tip === 'teren' ? 'un teren obișnuit' : S.tip === 'casa' ? 'o casă obișnuită' : 'un apartament obișnuit') + ' din aceeași zonă.</p>';
+      h += '<h5>Ce crește și ce scade valoarea</h5><table class="nvev-drv"><tbody>' + dr.map(function (d) { var pos = d.eur >= 0; return '<tr><td>' + esc(d.label) + (d.detail ? '<small>' + esc(d.detail) + '</small>' : '') + '</td><td class="' + (pos ? 'up' : 'down') + '">' + (pos ? '+' : '−') + eur(round(Math.abs(d.eur), 100)) + '</td></tr>'; }).join('') + '</tbody></table>';
+      h += '<p class="nvev-note">Față de ' + (S.tip === 'teren' ? 'un teren obișnuit' : S.tip === 'casa' ? 'o casă obișnuită' : 'un apartament obișnuit') + ' din aceeași zonă.</p>';
     }
-    h += '<h5>Piața din ' + esc(z ? z.nume : 'zonă') + '</h5><ul class="nv-mk">';
+    h += '<h5>Piața din ' + esc(z ? z.nume : 'zonă') + '</h5><ul class="nvev-mk">';
     if (st && st.med) h += '<li>Prețul cerut median: <b>' + n0(st.med) + ' €/mp</b>, din ' + deN(st.n, 'anunțuri') + ' actuale' + (st.p25 && st.p75 ? '; cele mai multe între ' + n0(st.p25) + ' și ' + n0(st.p75) + ' €/mp' : '') + '.</li>';
     var pos = st && st.p25 && st.p75 ? (x.ppm < st.p25 ? ' — sub majoritatea anunțurilor din zonă' : x.ppm > st.p75 ? ' — peste majoritatea anunțurilor din zonă' : ' — în intervalul obișnuit al zonei') : '';
     h += '<li>Prețul realist estimat pentru proprietatea ta: <b>' + n0(x.ppm) + ' €/mp</b>' + esc(pos) + '. Ține cont de an, stare, etaj și suprafață, iar prețul final de vânzare iese de obicei cu 5–12% sub cel din anunț.</li>';
     h += '<li>Cerere în zonă: <b>' + esc(r.liq || 'medie') + '</b>. La prețul realist, vânzarea durează de obicei ' + esc(tm.realist || '2–4 luni') + '.</li>';
     h += '</ul>';
     var miss = (r.missing || []).filter(function (t) { return /^Lipsește/.test(t); }).slice(0, 4);
-    if (miss.length) h += '<p class="nv-note">Estimarea ar fi mai precisă cu: ' + esc(miss.map(function (t) { return t.replace(/^Lipsește\s*/, '').replace(/\.$/, ''); }).join(', ')) + '. Le poți completa mai sus, la „Mai multe detalii”.</p>';
-    h += '<div class="nv-next"><b>Ce urmează:</b> un consultant Novaria te sună în cel mult o zi lucrătoare pentru evaluarea completă, gratuită, făcută pe proprietăți comparabile vândute și listate acum.</div>';
-    h += '<div class="nv-acts"><button type="button" class="nv-btn nv-ghost" data-act="print">Printează raportul</button>' + contactLine('') + '</div>';
+    if (miss.length) h += '<p class="nvev-note">Estimarea ar fi mai precisă cu: ' + esc(miss.map(function (t) { return t.replace(/^Lipsește\s*/, '').replace(/\.$/, ''); }).join(', ')) + '. Le poți completa mai sus, la „Mai multe detalii”.</p>';
+    h += '<div class="nvev-next"><b>Ce urmează:</b> un consultant Novaria te sună în cel mult o zi lucrătoare pentru evaluarea completă, gratuită, făcută pe proprietăți comparabile vândute și listate acum.</div>';
+    h += '<div class="nvev-acts"><button type="button" class="nvev-btn nvev-ghost" data-act="print">Printează raportul</button>' + contactLine('') + '</div>';
     h += '</div>';
     return h;
   }
@@ -285,15 +286,15 @@
     e.preventDefault();
     if (S.sending) return;
     var form = e.currentTarget, tel = form.telefon.value.trim(), digits = tel.replace(/\D/g, '');
-    ['#nv-tel-err', '#nv-email-err', '#nv-acord-err', '.nv-send-err'].forEach(function (q) { form.querySelector(q).textContent = ''; });
+    ['#nvev-tel-err', '#nvev-email-err', '#nvev-acord-err', '.nvev-send-err'].forEach(function (q) { form.querySelector(q).textContent = ''; });
     var firstBad = null;
-    if (digits.length < 9 || digits.length > 13) { form.querySelector('#nv-tel-err').textContent = 'Scrie un număr de telefon valid, ex. 0722 123 456.'; firstBad = firstBad || form.telefon; }
-    if (form.email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.value.trim())) { form.querySelector('#nv-email-err').textContent = 'Adresa de email nu pare corectă (sau las-o goală).'; firstBad = firstBad || form.email; }
-    if (!form.acord.checked) { form.querySelector('#nv-acord-err').textContent = 'Bifează acordul ca să te putem contacta.'; firstBad = firstBad || form.acord; }
+    if (digits.length < 9 || digits.length > 13) { form.querySelector('#nvev-tel-err').textContent = 'Scrie un număr de telefon valid, ex. 0722 123 456.'; firstBad = firstBad || form.telefon; }
+    if (form.email.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.value.trim())) { form.querySelector('#nvev-email-err').textContent = 'Adresa de email nu pare corectă (sau las-o goală).'; firstBad = firstBad || form.email; }
+    if (!form.acord.checked) { form.querySelector('#nvev-acord-err').textContent = 'Bifează acordul ca să te putem contacta.'; firstBad = firstBad || form.acord; }
     if (firstBad) { firstBad.focus(); return; }
     var x = S.res, z = x && x.z, P = x && x.r.prices;
     var payload = {
-      telefon: tel, nume: form.nume.value.trim(), email: form.email.value.trim(), acord: true, website: form.website.value,
+      telefon: tel, nume: form.nume.value.trim(), email: form.email.value.trim(), timeline: form.timeline.value, acord: true, website: form.website.value,
       t: Date.now() - shownAt, pagina: location.href.split('#')[0], dateVer: S.data && S.data.actualizat,
       zonaNume: z ? z.nume : '', proprietate: x ? x.s : { tip: S.tip },
       estimare: x ? { min: x.min, max: x.max, realist: P.realist, rapid: P.quick, listare: P.list, ppm: Math.round(x.ppm) } : {}
@@ -301,13 +302,14 @@
     S.sending = true; var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; btn.textContent = 'Se trimite…';
     function done(ok, msg) {
       S.sending = false; btn.disabled = false; btn.textContent = 'Trimite și vezi raportul';
-      if (!ok) { form.querySelector('.nv-send-err').textContent = msg || 'Nu am putut trimite cererea. Încearcă din nou sau sună-ne.'; return; }
+      if (!ok) { form.querySelector('.nvev-send-err').textContent = msg || 'Nu am putut trimite cererea. Încearcă din nou sau sună-ne.'; return; }
       S.unlocked = true; track('generate_lead', { form: 'novaria_evaluator', tip: S.tip, zona: z ? z.id : '' });
+      try { if (typeof window.nvTrack === 'function') window.nvTrack('Lead', 'SubmitForm', { content_name: 'Evaluator', content_category: S.tip }); } catch (e) { }
       renderResult();
-      var rep = $('.nv-report'); if (rep) { rep.insertAdjacentHTML('afterbegin', '<p class="nv-thanks" role="status">Mulțumim! Am primit cererea ta. Mai jos e raportul detaliat.</p>'); rep.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      var rep = $('.nvev-report'); if (rep) { rep.insertAdjacentHTML('afterbegin', '<p class="nvev-thanks" role="status">Mulțumim! Am primit cererea ta. Mai jos e raportul detaliat.</p>'); rep.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     }
     function viaAjax() {
-      var fd = new FormData(); fd.append('action', 'nv_eval_lead'); fd.append('payload', JSON.stringify(payload));
+      var fd = new FormData(); fd.append('action', 'novaria_ev_lead'); fd.append('payload', JSON.stringify(payload));
       return fetch(CFG.ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
     }
     fetch(CFG.leadUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'omit' })
@@ -320,19 +322,19 @@
   function calc(scroll) {
     readForm();
     var errs = validate(true);
-    if (errs) { var first = $('.nv-bad .nv-inp, .nv-bad .zc-inp'); if (first && scroll) first.focus(); return; }
+    if (errs) { var first = $('.nvev-bad .nvev-inp, .nvev-bad .zc-inp'); if (first && scroll) first.focus(); return; }
     var first = !S.shown; S.shown = true;
     renderResult();
-    var go = $('.nv-go'); if (go) go.textContent = 'Recalculează';
-    if (first) track('nv_eval_estimate', { tip: S.tip, zona: S.f.zona });
-    if (scroll) { var rg = $('.nv-range'); if (rg) { rg.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { rg.focus({ preventScroll: true }); } catch (e) { } } }
+    var go = $('.nvev-go'); if (go) go.textContent = 'Recalculează';
+    if (first) track('evaluator_estimate', { tip: S.tip, zona: S.f.zona });
+    if (scroll) { var rg = $('.nvev-range'); if (rg) { rg.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { rg.focus({ preventScroll: true }); } catch (e) { } } }
   }
   function live() { if (!S.shown) return; readForm(); if (validate(false)) return; validate(true); renderResult(); }
 
   function bind() {
     root.addEventListener('click', function (e) {
       var t = e.target.closest('[data-tip]');
-      if (t) { readForm(); S.moreOpen = !!($('.nv-more') || {}).open; var keep = { zona: S.f.zona }; S.tip = t.getAttribute('data-tip'); S.f = keep; renderForm(); if (S.shown) { var b = $('.nv-result'); b.hidden = true; S.shown = false; $('.nv-go').textContent = 'Vezi cât valorează'; } var nt = $('[data-tip="' + S.tip + '"]'); if (nt) nt.focus(); return; }
+      if (t) { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var keep = { zona: S.f.zona }; S.tip = t.getAttribute('data-tip'); S.f = keep; renderForm(); if (S.shown) { var b = $('.nvev-result'); b.hidden = true; S.shown = false; $('.nvev-go').textContent = 'Vezi cât valorează'; } var nt = $('[data-tip="' + S.tip + '"]'); if (nt) nt.focus(); return; }
       var c = e.target.closest('[data-chip]');
       if (c) { var k = c.getAttribute('data-chip'), v = c.getAttribute('data-v'); S.f[k] = S.f[k] === v ? '' : v; $$('[data-chip="' + k + '"]').forEach(function (b) { b.setAttribute('aria-checked', String(b.getAttribute('data-v') === S.f[k])); }); live(); return; }
       if (e.target.closest('[data-act="print"]')) { window.print(); return; }
@@ -344,20 +346,20 @@
       if (sib[i]) { e.preventDefault(); sib[i].focus(); }
     });
     root.addEventListener('change', function (e) {
-      if (e.target.closest('.nv-lead')) return;
-      if (e.target.name === 'an') { readForm(); S.moreOpen = !!($('.nv-more') || {}).open; var foc = document.activeElement && document.activeElement.id; renderForm(); if (foc) { var el = document.getElementById(foc); if (el) el.focus(); } }
-      if (e.target.name === 'zona') { readForm(); var wasBuc = !!$('#nv-metrou'); if (S.tip === 'apartament' && wasBuc !== isBuc()) { S.moreOpen = !!($('.nv-more') || {}).open; renderForm(); } var mp = $('#nv-mp'); if (mp && !mp.value) setTimeout(function () { mp.focus(); }, 30); }
+      if (e.target.closest('.nvev-lead')) return;
+      if (e.target.name === 'an') { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var foc = document.activeElement && document.activeElement.id; renderForm(); if (foc) { var el = document.getElementById(foc); if (el) el.focus(); } }
+      if (e.target.name === 'zona') { readForm(); var wasBuc = !!$('#nvev-metrou'); if (S.tip === 'apartament' && wasBuc !== isBuc()) { S.moreOpen = !!($('.nvev-more') || {}).open; renderForm(); } var mp = $('#nvev-mp'); if (mp && !mp.value) setTimeout(function () { mp.focus(); }, 30); }
       live();
     });
-    root.addEventListener('input', function (e) { if (e.target.closest('.nv-lead')) return; if (e.target.matches('#nv-mp,#nv-teren,#nv-front,#nv-frontC')) { clearTimeout(S.tm); S.tm = setTimeout(live, 350); } });
-    root.addEventListener('submit', function (e) { if (e.target.classList.contains('nv-form')) { e.preventDefault(); calc(true); } });
+    root.addEventListener('input', function (e) { if (e.target.closest('.nvev-lead')) return; if (e.target.matches('#nvev-mp,#nvev-teren,#nvev-front,#nvev-frontC')) { clearTimeout(S.tm); S.tm = setTimeout(live, 350); } });
+    root.addEventListener('submit', function (e) { if (e.target.classList.contains('nvev-form')) { e.preventDefault(); calc(true); } });
   }
 
   function start() {
-    root.innerHTML = '<div class="nv-card"><form class="nv-form" novalidate></form><div class="nv-result" aria-live="polite" hidden></div></div>';
+    root.innerHTML = '<div class="nvev-card"><form class="nvev-form" novalidate></form><div class="nvev-result" aria-live="polite" hidden></div></div>';
     renderForm(); bind();
   }
   loadData().then(function (d) { setData(d); start(); }, function () {
-    root.innerHTML = '<div class="nv-card"><p class="nv-fail">Evaluatorul nu s-a putut încărca acum. ' + contactLine('Ne poți contacta direct:') + '</p></div>';
+    root.innerHTML = '<div class="nvev-card"><p class="nvev-fail">Evaluatorul nu s-a putut încărca acum. ' + contactLine('Ne poți contacta direct:') + '</p></div>';
   });
 })();
