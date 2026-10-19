@@ -66,7 +66,7 @@ const GI = NV_GEO.build(STR, Z.zone, Z.pts, p => p);
 const zmap = {}; Z.zone.forEach(z => { zmap[z.id] = z; });
 const rowsM = NV_MARKET.collect(src, now, zmap).rows;
 const geoCache = new Map();
-const locate = r => { if (geoCache.has(r)) return geoCache.get(r); const l = NV_GEO.locate(GI, NV_GEO.adTexts(r.a), r.zona, null, r.a.link || r.a.titlu || ''); geoCache.set(r, l); return l; };
+const locate = r => { if (geoCache.has(r)) return geoCache.get(r); const l = NV_GEO.locateAd(GI, r.a, r.zona, null, r.a.link || r.a.titlu || ''); geoCache.set(r, l); return l; };
 const MC = NV_MICRO.compute(rowsM, Z.zone, GI, locate);
 // public: doar străzile cu destule anunțuri pe ele și în jur (cel puțin 2), procente întregi
 const MIN_STR = 2, microZ = {};
@@ -83,7 +83,8 @@ const mo = s => { if (!/^Sector /.test(s.loc)) return 0; const m = NV_MICRO.metr
 const LOCS = [], LI = {};
 const li = n => (LI[n] != null ? LI[n] : (LI[n] = LOCS.push(n) - 1));
 const r4 = x => Math.round(x * 1e4) / 1e4;
-const strPub = { v: 1, sursa: '© colaboratorii OpenStreetMap (ODbL)', loc: LOCS, s: GI.s.map(s => [s.nm, li(s.loc), r4(s.c[0]), r4(s.c[1]), mo(s)]), z: {} };
+const TYPED = /^(Strada|Bulevardul|Șoseaua|Soseaua|Calea|Aleea|Splaiul|Intrarea|Piața|Piata|Drumul|Drum|Prelungirea|Fundătura|Fundatura|Ulița|Pasajul|Piațeta|Cartierul)\b/i;
+const strPub = { v: 1, sursa: '© colaboratorii OpenStreetMap (ODbL)', loc: LOCS, s: GI.s.filter(s => TYPED.test(s.nm)).map(s => [s.nm, li(s.loc), r4(s.c[0]), r4(s.c[1]), mo(s)]), z: {} };
 for (const z of Z.zone) { if (!Z.pts[z.id]) continue; const zl = z.grup === 'Ilfov' ? NV_GEO.zoneLoc(GI, z.id) : null; strPub.z[z.id] = [Z.pts[z.id][0], Z.pts[z.id][1], zl != null ? li(zl) : -1]; }
 const strFile = path.join(path.dirname(outFile), 'strazi.json'), strTxt = JSON.stringify(strPub) + '\n';
 if (!fs.existsSync(strFile) || fs.readFileSync(strFile, 'utf8') !== strTxt) { fs.writeFileSync(strFile, strTxt); console.log('OK', strFile, (strTxt.length / 1024).toFixed(0) + ' KB', '·', strPub.s.length, 'străzi'); }
