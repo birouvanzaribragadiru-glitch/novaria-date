@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.1.0' );
+define( 'NOVARIA_EV_VER', '1.2.0' );
 define( 'NOVARIA_EV_FILE', __FILE__ );
 define( 'NOVARIA_EV_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NOVARIA_EV_URL', plugin_dir_url( __FILE__ ) );
@@ -301,7 +301,7 @@ function novaria_ev_clean_num( $v, $min, $max ) {
 
 /** Câmpurile proprietății acceptate (restul se ignoră). */
 function novaria_ev_subject_keys() {
-	return array( 'tip', 'zona', 'strada', 'microPct', 'mp', 'camere', 'an', 'etaj', 'etajeTotal', 'lift', 'stare', 'compart', 'incalzire', 'balcon', 'parcareNr', 'parcareTip', 'metrou', 'seismic', 'anvelopat', 'juridic', 'teren', 'tipCasa', 'structura', 'regim', 'front', 'utilCanal', 'utilGaz', 'asfalt', 'garaj', 'intravilan', 'utilApa', 'utilCanalT', 'utilGazT', 'utilCurent', 'acces', 'destinatie' );
+	return array( 'tip', 'zona', 'strada', 'microPct', 'mp', 'mpBalcon', 'camere', 'an', 'etaj', 'etajeTotal', 'lift', 'stare', 'compart', 'incalzire', 'balcon', 'parcareNr', 'parcareTip', 'metrou', 'seismic', 'anvelopat', 'juridic', 'teren', 'tipCasa', 'structura', 'regim', 'front', 'utilCanal', 'utilGaz', 'asfalt', 'garaj', 'intravilan', 'utilApa', 'utilCanalT', 'utilGazT', 'utilCurent', 'acces', 'destinatie' );
 }
 
 function novaria_ev_handle_lead( $p ) {
@@ -435,7 +435,7 @@ function novaria_ev_lead_lines( $post_id ) {
 	$L[] = '';
 	$L[] = 'Proprietatea: ' . get_the_title( $post_id );
 	$labels = array(
-		'strada' => 'Strada', 'microPct' => 'Strada față de media zonei (%)',
+		'strada' => 'Strada', 'microPct' => 'Strada față de media zonei (%)', 'mpBalcon' => 'Balcon / terasă (mp)',
 		'camere' => 'Camere', 'an' => 'An construcție', 'etaj' => 'Etaj', 'etajeTotal' => 'Din etaje', 'stare' => 'Stare',
 		'parcareNr' => 'Locuri parcare', 'parcareTip' => 'Tip parcare', 'teren' => 'Teren (mp)', 'tipCasa' => 'Tip casă',
 		'compart' => 'Compartimentare', 'incalzire' => 'Încălzire', 'balcon' => 'Balcon', 'metrou' => 'Metrou (min)',

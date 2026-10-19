@@ -82,7 +82,9 @@
     sel.hidden = true; sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
     var shown = [], act = -1, open = false, typed = false;
     function cur() { for (var i = 0; i < items.length; i++) if (items[i].v === sel.value) return items[i]; return null; }
-    function showText() { var c = cur(); inp.value = c ? c.t : sel.value.charAt(0) === '~' ? sel.value.slice(1) : (sel.value === '' && blank && opt.showBlankText ? blank : ''); }
+    // pe telefon select() nu merge mereu: la atingere golim câmpul (zona aleasă rămâne în placeholder), ca literele scrise să nu se lipească de ea
+    var coarse = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches), ph0 = inp.placeholder;
+    function showText() { inp.placeholder = ph0; var c = cur(); inp.value = c ? c.t : sel.value.charAt(0) === '~' ? sel.value.slice(1) : (sel.value === '' && blank && opt.showBlankText ? blank : ''); }
     function render(q) {
       var few = (opt.minChars || 0) > norm(q).length;
       shown = few ? [] : q ? search(items, q, 40) : items.slice();
@@ -119,7 +121,7 @@
     }
     // text liber (ex. o stradă care nu e în listă): valoarea e „~text”
     function pickFree() { var q = inp.value.trim(); if (!q) { pick(null); return; } pick({ v: '~' + q.slice(0, 80), t: q.slice(0, 80), _free: true }); }
-    inp.addEventListener('focus', function () { setTimeout(function () { try { inp.select(); } catch (e) { } }, 0); if (!open) doOpen(''); if (opt.scrollOnFocus !== false && window.innerWidth < 700) { try { var rt = wrap.getBoundingClientRect().top; if (rt > 140 || rt < 60) window.scrollBy({ top: rt - 96, behavior: 'smooth' }); } catch (e) { } } });
+    inp.addEventListener('focus', function () { if (coarse && !typed && inp.value && cur()) { inp.placeholder = inp.value; inp.value = ''; } else setTimeout(function () { if (typed) return; try { inp.setSelectionRange(0, inp.value.length); } catch (e) { try { inp.select(); } catch (e2) { } } }, 0); if (!open) doOpen(''); if (opt.scrollOnFocus !== false && window.innerWidth < 700) { try { var rt = wrap.getBoundingClientRect().top; if (rt > 140 || rt < 60) window.scrollBy({ top: rt - 96, behavior: 'smooth' }); } catch (e) { } } });
     inp.addEventListener('click', function () { if (!open) doOpen(typed ? inp.value : ''); });
     // schimbarea „nativă" a câmpului de text nu e o alegere: valoarea reală vine doar prin <select> (altfel paginile care
     // redesenează la orice „change" ar redesena chiar când vizitatorul trece la alt câmp)

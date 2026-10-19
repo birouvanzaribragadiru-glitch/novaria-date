@@ -119,7 +119,8 @@
     var sv = S.f.strada || '';
     h += field('strada', 'Strada', '<select id="nvev-strada" name="strada" aria-label="Strada"><option value=""></option>' + (sv ? '<option value="' + esc(sv) + '" selected>' + esc(sv.charAt(0) === '~' ? sv.slice(1) : sv.split('|')[0]) + '</option>' : '') + '</select>', { wide: 1, hint: 'opțional, unele străzi sunt mai căutate decât altele' });
     if (t === 'apartament') {
-      h += field('mp', 'Suprafață utilă', txt('mp', 'ex. 55', 'mp'), { req: 1 });
+      h += field('mp', 'Suprafață utilă', txt('mp', 'ex. 55', 'mp'), { req: 1, hint: 'fără balcon' });
+      h += field('mpBalcon', 'Balcon / terasă', txt('mpBalcon', 'ex. 5', 'mp'), { hint: 'separat, dacă are' });
       h += field('camere', 'Camere', chips('camere', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5+']], 'Camere'));
       h += field('an', 'Anul construcției', sel('an', AN_APT));
       h += field('stare', 'Starea', sel('stare', STARE_APT));
@@ -146,7 +147,7 @@
     if (t === 'apartament') {
       m += field('compart', 'Compartimentare', sel('compart', engOpt('compart')));
       m += field('incalzire', 'Încălzire', sel('incalzire', engOpt('incalzire')));
-      m += field('balcon', 'Balcon', sel('balcon', engOpt('balcon')));
+      m += field('balcon', 'Tip balcon', sel('balcon', engOpt('balcon')));
       if (isBuc()) m += field('metrou', 'Până la metrou', sel('metrou', [['', 'Nu știu / nu contează']].concat(E.OPT.metrou.slice(1).map(function (o) { return [o[0], o[1]]; }))), S.f.metrouAuto ? { hint: 'după strada aleasă, schimbă dacă e altfel' } : null);
       var an = num(S.f.an);
       if (!an || an <= 1990) m += field('seismic', 'Risc seismic', sel('seismic', engOpt('seismic')));
@@ -213,6 +214,9 @@
       if (f.parcare) { var p = f.parcare.split('|'); s.parcareNr = p[0]; s.parcareTip = p[1]; } else s.parcareNr = '';
       s.anvelopat = !!f.anvelopat && (!num(f.an) || num(f.an) <= 2005);
       s.balcon = s.balcon || '';
+      // balconul nu intră în suprafața utilă: se scrie separat și contează cam la jumătate (terasa, cam 30%)
+      var bm = num(f.mpBalcon);
+      if (f.mpBalcon !== '' && f.mpBalcon != null && bm != null && bm >= 0) { s.mpBalcon = String(bm); s.balcon = bm > 0 ? (s.balcon === 'terasa' ? 'terasa' : 'da') : 'nu'; }
     } else if (S.tip === 'casa') {
       ['camere', 'an', 'stare', 'tipCasa', 'structura', 'regim', 'incalzire', 'teren'].forEach(function (k) { if (f[k]) s[k] = f[k]; });
       ['utilCanal', 'utilGaz', 'asfalt'].forEach(function (k) { s[k] = f[k] === 'da' ? true : f[k] === 'nu' ? false : null; });
@@ -234,7 +238,8 @@
     if (!mp) { errs.mp = 'Scrie suprafața în mp.'; ok = false; }
     else if (mp < lim[0] || mp > lim[1]) { errs.mp = 'Suprafața pare neobișnuită (între ' + n0(lim[0]) + ' și ' + n0(lim[1]) + ' mp).'; ok = false; }
     if (S.tip === 'casa' && f.teren && (!num(f.teren) || num(f.teren) < 30 || num(f.teren) > 100000)) { errs.teren = 'Verifică suprafața terenului.'; ok = false; }
-    if (show) ['zona', 'mp', 'teren'].forEach(function (k) { var e = $('#nvev-' + k + '-err'); if (e) e.textContent = errs[k] || ''; var w = $('[data-for="' + k + '"]'); if (w) w.classList.toggle('nvev-bad', !!errs[k]); });
+    if (S.tip === 'apartament' && f.mpBalcon && (num(f.mpBalcon) == null || num(f.mpBalcon) < 0 || num(f.mpBalcon) > 200)) { errs.mpBalcon = 'Scrie suprafața balconului în mp (sau lasă gol).'; ok = false; }
+    if (show) ['zona', 'mp', 'teren', 'mpBalcon'].forEach(function (k) { var e = $('#nvev-' + k + '-err'); if (e) e.textContent = errs[k] || ''; var w = $('[data-for="' + k + '"]'); if (w) w.classList.toggle('nvev-bad', !!errs[k]); });
     return ok ? null : errs;
   }
 
@@ -301,7 +306,7 @@
   }
   function waText() {
     var x = S.res; if (!x) return 'Bună ziua, aș dori o evaluare a proprietății mele.';
-    return 'Bună ziua, am folosit evaluatorul de pe novaria.ro: ' + (S.tip === 'casa' ? 'casă' : S.tip) + ' de ' + n0(num(x.s.mp)) + ' mp în ' + (x.z ? x.z.nume : '') + ', estimare ' + eur(x.min) + ' – ' + eur(x.max) + '. Aș dori o evaluare completă.';
+    return 'Bună ziua, am folosit evaluatorul de pe novaria.ro: ' + (S.tip === 'casa' ? 'casă' : S.tip) + ' de ' + n0(num(x.s.mp)) + ' mp' + (num(x.s.mpBalcon) ? ' + ' + n0(num(x.s.mpBalcon)) + ' mp balcon' : '') + ' în ' + (x.z ? x.z.nume : '') + ', estimare ' + eur(x.min) + ' – ' + eur(x.max) + '. Aș dori o evaluare completă.';
   }
   var HIDE_WARN = /comparabil|Setări|media zonei/i;
   function warningsHTML(x, short) {
@@ -426,7 +431,7 @@
       if (e.target.name === 'metrou') { S.f.metrouAuto = false; var hh = $('[data-for="metrou"] .nvev-hint'); if (hh) hh.remove(); }
       live();
     });
-    root.addEventListener('input', function (e) { if (e.target.closest('.nvev-lead')) return; if (e.target.matches('#nvev-mp,#nvev-teren,#nvev-front,#nvev-frontC')) { clearTimeout(S.tm); S.tm = setTimeout(live, 350); } });
+    root.addEventListener('input', function (e) { if (e.target.closest('.nvev-lead')) return; if (e.target.matches('#nvev-mp,#nvev-mpBalcon,#nvev-teren,#nvev-front,#nvev-frontC')) { clearTimeout(S.tm); S.tm = setTimeout(live, 350); } });
     root.addEventListener('submit', function (e) { if (e.target.classList.contains('nvev-form')) { e.preventDefault(); calc(true); } });
   }
 
