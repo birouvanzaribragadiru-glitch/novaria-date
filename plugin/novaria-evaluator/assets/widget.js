@@ -1,7 +1,8 @@
 /* Novaria Evaluator — formularul public de pe novaria.ro.
    Intervalul de preț apare imediat; raportul detaliat se deschide după ce vizitatorul lasă un număr de telefon.
    Calculul: același motor ca în aplicația internă Novaria (engine.js), pe valorile de zonă actualizate zilnic
-   din anunțurile monitorizate (doar cifre agregate pe zone). */
+   din anunțurile monitorizate (doar cifre agregate pe zone), plus factorul străzii față de media zonei,
+   calculat automat din anunțurile de pe stradă și din jur. */
 (function () {
   'use strict';
   var E = window.CMA, ZC = window.NV_ZCOMBO;
@@ -20,6 +21,8 @@
   function deN(n, w) { n = Math.round(n); var r = n % 100; return n0(n) + (n > 0 && (r >= 20 || r === 0) ? ' de ' : ' ') + w; }
   function round(x, step) { return Math.round(x / step) * step; }
   function num(v) { return E.num(v); }
+  function anunturi(n) { n = Math.round(n); return n === 1 ? 'un anunț' : deN(n, 'anunțuri'); }
+  function dkm(a, b) { var dx = (a[0] - b[0]) * 79.4, dy = (a[1] - b[1]) * 111.2; return Math.sqrt(dx * dx + dy * dy); }
   function track(name, params) { try { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); else if (Array.isArray(window.dataLayer)) window.dataLayer.push(Object.assign({ event: name }, params || {})); } catch (e) { } }
   var MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
   function dateRo(iso) { var d = new Date(iso); return isFinite(d) ? d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() : ''; }
@@ -37,7 +40,7 @@
   var DA_NU = [['', 'Nu știu'], ['da', 'Da'], ['nu', 'Nu']];
 
   // ---------- starea ----------
-  var S = { tip: 'apartament', f: {}, data: null, zones: [], zmap: {}, shown: false, unlocked: false, sending: false, res: null };
+  var S = { tip: 'apartament', f: {}, data: null, zones: [], zmap: {}, shown: false, unlocked: false, sending: false, res: null, sd: null, sdZ: {} };
 
   // ---------- date ----------
   function loadData() {
@@ -53,6 +56,41 @@
       return o;
     });
     S.zmap = {}; S.zones.forEach(function (z) { S.zmap[z.id] = z; });
+  }
+
+  // ---------- străzile (lista din OpenStreetMap, încărcată doar când e nevoie) ----------
+  function loadStreets() {
+    if (!S.sdP && CFG.streetsUrl) S.sdP = fetch(CFG.streetsUrl, { credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) { if (!d || !Array.isArray(d.s)) throw new Error('strazi'); S.sd = d; S.sdZ = {}; refreshStreets(); }, function () { S.sdErr = true; refreshStreets(); });
+    return S.sdP;
+  }
+  // aceleași reguli ca la plasarea anunțurilor: la București pe o rază de 3,5 km de cartier, în Ilfov strada localității
+  function streetsFor(zid) {
+    var d = S.sd, z = S.zmap[zid]; if (!d || !z || !d.z[zid]) return [];
+    if (S.sdZ[zid]) return S.sdZ[zid];
+    var c = d.z[zid], ilf = !z.sector, out = [];
+    d.s.forEach(function (r) { var dd = dkm([r[2], r[3]], c); if (ilf ? (r[1] === c[2] ? dd < 12 : dd < 2.5) : dd < 3.5) out.push(r); });
+    return (S.sdZ[zid] = out);
+  }
+  function streetItems() {
+    var d = S.sd; if (!d || !S.f.zona) return [];
+    return streetsFor(S.f.zona).map(function (r) { return { v: r[0] + '|' + d.loc[r[1]], t: r[0], g: d.loc[r[1]], keys: [], mo: r[4] }; });
+  }
+  function refreshStreets() {
+    var el = $('#nvev-strada'); if (!el || !el._zc) return;
+    var cur = S.f.strada || '';
+    if (S.sd && cur && cur.charAt(0) !== '~' && !streetItems().some(function (it) { return it.v === cur; })) { S.f.strada = ''; el.value = ''; }
+    el._zc.setItems(streetItems());
+    el._zc.input.placeholder = S.f.zona ? 'Scrie strada: ex. ' + (S.zmap[S.f.zona] && !S.zmap[S.f.zona].sector ? 'Safirului' : 'Fabricii') : 'Alege întâi zona';
+  }
+  function streetMetro(k) { var d = S.sd; if (!d || !k) return 0; var it = null; streetItems().some(function (x) { if (x.v === k) { it = x; return true; } return false; }); return it ? it.mo : 0; }
+  // factorul străzii: procentul publicat × cât se aplică la tipul ales (0 unde anunțurile nu arată diferențe clare)
+  function microFor(zid, tip, k) {
+    var M = S.data && S.data.micro; if (!M || !M.z || !k || k.charAt(0) === '~') return null;
+    var e = M.z[zid] && M.z[zid][k], sc = (M.scala && M.scala[tip]) || 0; if (!e || !sc) return null;
+    var f = e[0] / 100 * sc; if (Math.abs(f) < 0.005) return null;
+    var pct = Math.round(f * 100), src = e[1] ? anunturi(e[1]) + ' de pe stradă' + (e[2] ? ' și ' + anunturi(e[2]) + ' din jur' : '') : anunturi(e[2]) + ' de pe străzile din jur';
+    return { f: f, pct: pct, nm: k.split('|')[0], label: (pct > 0 ? '+' : '−') + Math.abs(pct) + '% față de media zonei, din ' + src };
   }
 
   // ---------- formular ----------
@@ -78,6 +116,8 @@
     h += '<div class="nvev-tabs" role="tablist" aria-label="Ce vrei să evaluezi">' + [['apartament', 'Apartament'], ['casa', 'Casă / vilă'], ['teren', 'Teren']].map(function (o) { return '<button type="button" role="tab" class="nvev-tab" aria-selected="' + (t === o[0]) + '" data-tip="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>';
     h += '<div class="nvev-grid">';
     h += field('zona', 'Zona', zoneSelect(), { req: 1, wide: 1, hint: 'cartierul sau localitatea' });
+    var sv = S.f.strada || '';
+    h += field('strada', 'Strada', '<select id="nvev-strada" name="strada" aria-label="Strada"><option value=""></option>' + (sv ? '<option value="' + esc(sv) + '" selected>' + esc(sv.charAt(0) === '~' ? sv.slice(1) : sv.split('|')[0]) + '</option>' : '') + '</select>', { wide: 1, hint: 'opțional, unele străzi sunt mai căutate decât altele' });
     if (t === 'apartament') {
       h += field('mp', 'Suprafață utilă', txt('mp', 'ex. 55', 'mp'), { req: 1 });
       h += field('camere', 'Camere', chips('camere', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5+']], 'Camere'));
@@ -107,7 +147,7 @@
       m += field('compart', 'Compartimentare', sel('compart', engOpt('compart')));
       m += field('incalzire', 'Încălzire', sel('incalzire', engOpt('incalzire')));
       m += field('balcon', 'Balcon', sel('balcon', engOpt('balcon')));
-      if (isBuc()) m += field('metrou', 'Până la metrou', sel('metrou', [['', 'Nu știu / nu contează']].concat(E.OPT.metrou.slice(1).map(function (o) { return [o[0], o[1]]; }))));
+      if (isBuc()) m += field('metrou', 'Până la metrou', sel('metrou', [['', 'Nu știu / nu contează']].concat(E.OPT.metrou.slice(1).map(function (o) { return [o[0], o[1]]; }))), S.f.metrouAuto ? { hint: 'după strada aleasă, schimbă dacă e altfel' } : null);
       var an = num(S.f.an);
       if (!an || an <= 1990) m += field('seismic', 'Risc seismic', sel('seismic', engOpt('seismic')));
       if (!an || an <= 2005) m += field('anv', ' ', check('anvelopat', 'Bloc reabilitat termic (anvelopat)'), { cls: 'nvev-fck' });
@@ -142,6 +182,18 @@
         items: function () { return S.zones.map(function (z) { return { v: z.id, t: z.nume, g: z.grup.replace('București – ', ''), keys: (z.alias || []).concat(z.loc ? [z.loc] : [], z.sector ? ['sector ' + z.sector] : []) }; }); }
       });
     }
+    var ss = $('#nvev-strada');
+    if (ZC && ss) {
+      ZC.attach(ss, {
+        inputClass: 'nvev-inp', scrollOnFocus: true, minChars: 2, freeText: true, allowEmpty: true, toggleLabel: 'Arată străzile',
+        placeholder: S.f.zona ? 'Scrie strada' : 'Alege întâi zona',
+        hintMsg: function () { return !S.f.zona ? 'Alege întâi zona, apoi scrie strada.' : S.sdErr ? 'Lista străzilor nu s-a încărcat. Poți scrie strada, o vede consultantul.' : !S.sd ? 'Se încarcă lista străzilor…' : 'Scrie primele litere ale străzii.'; },
+        noneMsg: function (q) { return 'Nu găsim „' + q + '” în zona aleasă. Poți lăsa ce ai scris: îl vede consultantul.'; },
+        items: function () { return streetItems(); }
+      });
+      ss._zc.input.addEventListener('focus', loadStreets);
+      if (S.f.zona) { loadStreets(); refreshStreets(); }
+    }
   }
 
   // ---------- citirea formularului → proprietatea pentru motor ----------
@@ -152,6 +204,9 @@
   }
   function subject() {
     var f = S.f, s = { tip: S.tip, zona: f.zona || '', mp: f.mp || '', juridic: f.probleme ? 'probleme' : 'ok' };
+    var st = f.strada || '';
+    if (st) s.strada = st.charAt(0) === '~' ? st.slice(1) : st.split('|')[0];
+    var mf = microFor(s.zona, S.tip, st); if (mf) { s.micro = { f: mf.f, nm: mf.nm, label: mf.label }; s.microPct = mf.pct; }
     if (S.tip === 'apartament') {
       ['camere', 'an', 'stare', 'etaj', 'etajeTotal', 'compart', 'incalzire', 'balcon', 'seismic'].forEach(function (k) { if (f[k]) s[k] = f[k]; });
       if (f.metrou && isBuc()) s.metrou = f.metrou;
@@ -235,7 +290,7 @@
       '<p class="nvev-basis">' + esc(basisText(x)) + '</p>' +
       warningsHTML(x, true) +
       (S.unlocked ? reportHTML(x) : lead) +
-      '<p class="nvev-disc">Estimare automată, orientativă, pornind de la prețurile cerute în zonă. Nu este un raport de evaluare ANEVAR.</p>';
+      '<p class="nvev-disc">Estimare automată, orientativă, pornind de la prețurile cerute în zonă. Nu este un raport de evaluare ANEVAR.' + (S.sd ? ' Lista străzilor: © colaboratorii OpenStreetMap.' : '') + '</p>';
     var lf = $('.nvev-lead');
     if (lf) { lf.addEventListener('submit', onLead); $$('input, select', lf).forEach(function (i) { if (keep[i.name] == null) return; if (i.type === 'checkbox') i.checked = keep[i.name]; else i.value = keep[i.name]; }); }
   }
@@ -272,6 +327,13 @@
     var pos = st && st.p25 && st.p75 ? (x.ppm < st.p25 ? ' — sub majoritatea anunțurilor din zonă' : x.ppm > st.p75 ? ' — peste majoritatea anunțurilor din zonă' : ' — în intervalul obișnuit al zonei') : '';
     h += '<li>Prețul realist estimat pentru proprietatea ta: <b>' + n0(x.ppm) + ' €/mp</b>' + esc(pos) + '. Ține cont de an, stare, etaj și suprafață, iar prețul final de vânzare iese de obicei cu 5–12% sub cel din anunț.</li>';
     h += '<li>Cerere în zonă: <b>' + esc(r.liq || 'medie') + '</b>. La prețul realist, vânzarea durează de obicei ' + esc(tm.realist || '2–4 luni') + '.</li>';
+    if (x.s.strada) {
+      var M = S.data && S.data.micro, sc = M && M.scala ? M.scala[S.tip] || 0 : 0;
+      if (x.s.micro) h += '<li>' + esc(x.s.micro.nm) + ': <b>' + esc(x.s.micro.label.split(',')[0]) + '</b>, calculat din anunțurile de pe stradă și din jur.</li>';
+      else if (S.f.strada.charAt(0) === '~') h += '<li>Strada scrisă (' + esc(x.s.strada) + ') nu e în lista noastră; am folosit media zonei.</li>';
+      else if (!sc) h += '<li>La ' + (S.tip === 'apartament' ? 'apartamente' : S.tip === 'casa' ? 'case' : 'terenuri') + ' nu vedem încă în anunțuri diferențe clare între străzile aceleiași zone, așa că am folosit media zonei' + (S.tip === 'apartament' && isBuc() ? ' și distanța până la metrou' : '') + '.</li>';
+      else h += '<li>Pentru ' + esc(x.s.strada) + ' nu avem încă destule anunțuri pe stradă și în jur; am folosit media zonei.</li>';
+    }
     h += '</ul>';
     var miss = (r.missing || []).filter(function (t) { return /^Lipsește/.test(t); }).slice(0, 4);
     if (miss.length) h += '<p class="nvev-note">Estimarea ar fi mai precisă cu: ' + esc(miss.map(function (t) { return t.replace(/^Lipsește\s*/, '').replace(/\.$/, ''); }).join(', ')) + '. Le poți completa mai sus, la „Mai multe detalii”.</p>';
@@ -334,7 +396,7 @@
   function bind() {
     root.addEventListener('click', function (e) {
       var t = e.target.closest('[data-tip]');
-      if (t) { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var keep = { zona: S.f.zona }; S.tip = t.getAttribute('data-tip'); S.f = keep; renderForm(); if (S.shown) { var b = $('.nvev-result'); b.hidden = true; S.shown = false; $('.nvev-go').textContent = 'Vezi cât valorează'; } var nt = $('[data-tip="' + S.tip + '"]'); if (nt) nt.focus(); return; }
+      if (t) { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var keep = { zona: S.f.zona, strada: S.f.strada }; S.tip = t.getAttribute('data-tip'); S.f = keep; var mo0 = streetMetro(keep.strada); if (S.tip === 'apartament' && isBuc() && mo0) { S.f.metrou = String(mo0); S.f.metrouAuto = true; } renderForm(); if (S.shown) { var b = $('.nvev-result'); b.hidden = true; S.shown = false; $('.nvev-go').textContent = 'Vezi cât valorează'; } var nt = $('[data-tip="' + S.tip + '"]'); if (nt) nt.focus(); return; }
       var c = e.target.closest('[data-chip]');
       if (c) { var k = c.getAttribute('data-chip'), v = c.getAttribute('data-v'); S.f[k] = S.f[k] === v ? '' : v; $$('[data-chip="' + k + '"]').forEach(function (b) { b.setAttribute('aria-checked', String(b.getAttribute('data-v') === S.f[k])); }); live(); return; }
       if (e.target.closest('[data-act="print"]')) { window.print(); return; }
@@ -348,7 +410,20 @@
     root.addEventListener('change', function (e) {
       if (e.target.closest('.nvev-lead')) return;
       if (e.target.name === 'an') { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var foc = document.activeElement && document.activeElement.id; renderForm(); if (foc) { var el = document.getElementById(foc); if (el) el.focus(); } }
-      if (e.target.name === 'zona') { readForm(); var wasBuc = !!$('#nvev-metrou'); if (S.tip === 'apartament' && wasBuc !== isBuc()) { S.moreOpen = !!($('.nvev-more') || {}).open; renderForm(); } var mp = $('#nvev-mp'); if (mp && !mp.value) setTimeout(function () { mp.focus(); }, 30); }
+      if (e.target.name === 'zona') {
+        readForm(); loadStreets();
+        if (S.f.metrouAuto) { S.f.metrou = ''; S.f.metrouAuto = false; }
+        var wasBuc = !!$('#nvev-metrou'); if (S.tip === 'apartament' && wasBuc !== isBuc()) { S.moreOpen = !!($('.nvev-more') || {}).open; renderForm(); } else refreshStreets();
+        var nx = $('#nvev-strada_q'), mp = $('#nvev-mp'); if (nx && !S.f.strada) setTimeout(function () { nx.focus(); }, 30); else if (mp && !mp.value) setTimeout(function () { mp.focus(); }, 30);
+      }
+      if (e.target.name === 'strada') {
+        readForm();
+        // distanța până la metrou, din strada aleasă (doar dacă nu a ales-o vizitatorul)
+        var mo = streetMetro(S.f.strada), ms = $('#nvev-metrou');
+        if (S.tip === 'apartament' && isBuc() && (!S.f.metrou || S.f.metrouAuto)) { S.f.metrou = mo ? String(mo) : ''; S.f.metrouAuto = !!mo; if (ms) { S.moreOpen = !!($('.nvev-more') || {}).open; renderForm(); } }
+        var mp2 = $('#nvev-mp'); if (mp2 && !mp2.value) setTimeout(function () { mp2.focus(); }, 30);
+      }
+      if (e.target.name === 'metrou') { S.f.metrouAuto = false; var hh = $('[data-for="metrou"] .nvev-hint'); if (hh) hh.remove(); }
       live();
     });
     root.addEventListener('input', function (e) { if (e.target.closest('.nvev-lead')) return; if (e.target.matches('#nvev-mp,#nvev-teren,#nvev-front,#nvev-frontC')) { clearTimeout(S.tm); S.tm = setTimeout(live, 350); } });

@@ -199,6 +199,8 @@ var CMA = (function () {
       push('marime', 'Suprafață', Math.pow(clamp(num(s.mp) || 500, 100, 20000) / 500, -0.10), num(s.mp) + ' mp');
     }
     if (s.juridic === 'probleme') push('juridic', 'Situație juridică', 0.88, lbl('juridic', s.juridic));
+    // strada față de media zonei: calculată automat din anunțurile de pe stradă și din jur (NV_MICRO)
+    if (s.micro && num(s.micro.f)) push('micro', s.micro.nm || 'Strada', 1 + num(s.micro.f), s.micro.label || '');
     return out;
   }
 
@@ -267,6 +269,12 @@ var CMA = (function () {
       if (bz && bc) mul('Zonă (' + cz.nume + ' → ' + z.nume + ')', bz / bc, 'diferența de preț între zone');
     }
     if (num(c.locRel)) mul('Micro-locație', 1 - 0.04 * num(c.locRel), lbl('locRel', num(c.locRel)));
+    else if (s.micro && c.microF != null && (!cz || !z || cz.id === z.id)) {
+      // amândouă pe străzi cunoscute din aceeași zonă: diferența dintre factorii străzilor (automat, din anunțuri)
+      var fS = num(s.micro.f) || 0, fC = num(c.microF) || 0;
+      // doar mută prețul comparabilei: nu schimbă cât de asemănătoare e (alegerea și ponderea comparabilelor rămân aceleași)
+      if (Math.abs(fS - fC) >= 0.005) { var fm = (1 + fS) / (1 + fC); ppm *= fm; adj.push({ k: 'Strada' + (c.microNm ? ' (' + c.microNm + ' → ' + (s.micro.nm || 'strada ta') + ')' : ' (' + (s.micro.nm || 'strada ta') + ' față de media zonei)'), f: fm, mode: 'mul', note: c.microNm ? 'diferența dintre străzi, din anunțuri' : 'anunțul nu spune strada: socotit pe o stradă obișnuită a zonei' }); }
+    }
 
     if (tip === 'apartament') {
       var r = zoneRatio(z);
@@ -305,7 +313,7 @@ var CMA = (function () {
 
     var gross = 0;
     adj.forEach(function (a) {
-      if (/^(Negociere|Anunț expirat|Evoluția)/.test(a.k)) return;
+      if (/^(Negociere|Anunț expirat|Evoluția|Strada)/.test(a.k)) return;
       if (a.mode === 'mul') gross += Math.abs(Math.log(a.f));
       else if (a.mode === 'add') gross += Math.abs(a.ppmDelta) / ppm0;
       else if (a.mode === 'abs') gross += Math.abs(a.v) / core;

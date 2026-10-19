@@ -2,7 +2,9 @@
 // Exportă datele publice pentru evaluatorul de pe novaria.ro.
 // Intrare: un dosar cu colecțiile din aplicația internă, câte un fișier JSON pe document:
 //   <dump>/piata/*.json, agentii/*.json, portaluri/*.json, lipite/*.json, referinte/imo360.json, setari/general.json (opțional)
-// Ieșire: data/evaluator.json — DOAR cifre agregate pe zone (valori €/mp, mediane, numărul de anunțuri).
+// Ieșire: data/evaluator.json — DOAR cifre agregate pe zone (valori €/mp, mediane, numărul de anunțuri)
+//         și factorii pe străzi (procent față de media zonei, calculați din mai multe anunțuri de pe stradă și din jur);
+//         data/strazi.json — lista străzilor din OpenStreetMap (nume, localitate, centru), pentru câmpul „Strada” din formular.
 // Nu iese niciodată din aplicație: anunțuri individuale, linkuri, titluri, telefoane, nume, dosare, lead-uri.
 // Folosire: node scripts/export.js <dump> [data/evaluator.json]
 'use strict';
@@ -10,6 +12,8 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 global.window = global;
 require(path.join(ROOT, 'lib/market.js'));
+require(path.join(ROOT, 'lib/geo.js'));
+require(path.join(ROOT, 'lib/micro.js'));
 const CMA = require(path.join(ROOT, 'lib/engine.js'));
 const Z = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib/zones.json'), 'utf8'));
 
@@ -56,6 +60,34 @@ function pubStats(s) {
   if (s.n >= MIN_PCT && s.p25 && s.p75) { o.p25 = s.p25; o.p75 = s.p75; }
   return o;
 }
+// ---- străzile: factorul fiecărei străzi față de media zonei (automat, din anunțuri) ----
+const STR = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib/strazi.json'), 'utf8'));
+const GI = NV_GEO.build(STR, Z.zone, Z.pts, p => p);
+const zmap = {}; Z.zone.forEach(z => { zmap[z.id] = z; });
+const rowsM = NV_MARKET.collect(src, now, zmap).rows;
+const geoCache = new Map();
+const locate = r => { if (geoCache.has(r)) return geoCache.get(r); const l = NV_GEO.locate(GI, NV_GEO.adTexts(r.a), r.zona, null, r.a.link || r.a.titlu || ''); geoCache.set(r, l); return l; };
+const MC = NV_MICRO.compute(rowsM, Z.zone, GI, locate);
+// public: doar străzile cu destule anunțuri pe ele și în jur (cel puțin 2), procente întregi
+const MIN_STR = 2, microZ = {};
+let nPub = 0;
+if (Object.keys(MC.scala).some(k => MC.scala[k] > 0)) for (const zid of Object.keys(MC.zone)) {
+  const o = {};
+  for (const [k, e] of Object.entries(MC.zone[zid])) { if (e[1] + e[2] < MIN_STR || Math.abs(e[0]) < 1) continue; o[k] = [Math.round(e[0]), Math.round(e[1]), Math.round(e[2])]; nPub++; }
+  if (Object.keys(o).length) microZ[zid] = o;
+}
+const micro = { scala: MC.scala, n: MC.anunturi, z: microZ };
+
+// lista publică a străzilor (se schimbă doar când se reface indexul OpenStreetMap)
+const mo = s => { if (!/^Sector /.test(s.loc)) return 0; const m = NV_MICRO.metroOpt(GI, s.c); return m ? +m.opt : 0; };
+const LOCS = [], LI = {};
+const li = n => (LI[n] != null ? LI[n] : (LI[n] = LOCS.push(n) - 1));
+const r4 = x => Math.round(x * 1e4) / 1e4;
+const strPub = { v: 1, sursa: '© colaboratorii OpenStreetMap (ODbL)', loc: LOCS, s: GI.s.map(s => [s.nm, li(s.loc), r4(s.c[0]), r4(s.c[1]), mo(s)]), z: {} };
+for (const z of Z.zone) { if (!Z.pts[z.id]) continue; const zl = z.grup === 'Ilfov' ? NV_GEO.zoneLoc(GI, z.id) : null; strPub.z[z.id] = [Z.pts[z.id][0], Z.pts[z.id][1], zl != null ? li(zl) : -1]; }
+const strFile = path.join(path.dirname(outFile), 'strazi.json'), strTxt = JSON.stringify(strPub) + '\n';
+if (!fs.existsSync(strFile) || fs.readFileSync(strFile, 'utf8') !== strTxt) { fs.writeFileSync(strFile, strTxt); console.log('OK', strFile, (strTxt.length / 1024).toFixed(0) + ' KB', '·', strPub.s.length, 'străzi'); }
+
 const zone = zonesEff.map(z => {
   const st = R.stats[z.id] || {}, o = { id: z.id, nume: z.nume, grup: z.grup, alias: z.alias || [], v: {}, lq: z.lichiditate || 'medie' };
   if (z.sector) o.sector = z.sector; if (z.loc) o.loc = z.loc;
@@ -76,7 +108,8 @@ const out = {
   anunturi: R.n,
   imo360: ref ? { luna: ref.luna || null, trendOras: R.trendOras } : null,
   params,
-  zone
+  zone,
+  micro
 };
 // verificare de siguranță: nimic care să arate a link, telefon sau email
 const txt = JSON.stringify(out);
@@ -91,3 +124,4 @@ if (fs.existsSync(outFile)) {
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, JSON.stringify(out, null, 0) + '\n');
 console.log('OK', outFile, (txt.length / 1024).toFixed(1) + ' KB', '·', zone.length, 'zone ·', R.n, 'anunțuri', JSON.stringify(R.surse));
+console.log('   străzi cu factor public:', nPub, '· anunțuri localizate:', MC.anunturi, '· cât se aplică pe tip:', JSON.stringify(MC.scala), '· verificare:', JSON.stringify(MC.cv));

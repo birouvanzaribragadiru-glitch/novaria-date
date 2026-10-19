@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.0.2
+ * Version:           1.1.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.0.2' );
+define( 'NOVARIA_EV_VER', '1.1.0' );
 define( 'NOVARIA_EV_FILE', __FILE__ );
 define( 'NOVARIA_EV_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NOVARIA_EV_URL', plugin_dir_url( __FILE__ ) );
@@ -152,6 +152,7 @@ function novaria_ev_shortcode( $atts ) {
 		'leadUrl'    => esc_url_raw( rest_url( 'novaria-evaluator/v1/lead' ) ),
 		'ajaxUrl'    => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 		'bundledUrl' => esc_url_raw( NOVARIA_EV_URL . 'data/evaluator.json?v=' . NOVARIA_EV_VER ),
+		'streetsUrl' => esc_url_raw( NOVARIA_EV_URL . 'data/strazi.json?v=' . NOVARIA_EV_VER ),
 		'phone'      => (string) $o['phone'],
 		'whatsapp'   => preg_replace( '/\D+/', '', (string) $o['whatsapp'] ),
 		'privacyUrl' => esc_url_raw( $o['privacy_url'] ),
@@ -300,7 +301,7 @@ function novaria_ev_clean_num( $v, $min, $max ) {
 
 /** Câmpurile proprietății acceptate (restul se ignoră). */
 function novaria_ev_subject_keys() {
-	return array( 'tip', 'zona', 'mp', 'camere', 'an', 'etaj', 'etajeTotal', 'lift', 'stare', 'compart', 'incalzire', 'balcon', 'parcareNr', 'parcareTip', 'metrou', 'seismic', 'anvelopat', 'juridic', 'teren', 'tipCasa', 'structura', 'regim', 'front', 'utilCanal', 'utilGaz', 'asfalt', 'garaj', 'intravilan', 'utilApa', 'utilCanalT', 'utilGazT', 'utilCurent', 'acces', 'destinatie' );
+	return array( 'tip', 'zona', 'strada', 'microPct', 'mp', 'camere', 'an', 'etaj', 'etajeTotal', 'lift', 'stare', 'compart', 'incalzire', 'balcon', 'parcareNr', 'parcareTip', 'metrou', 'seismic', 'anvelopat', 'juridic', 'teren', 'tipCasa', 'structura', 'regim', 'front', 'utilCanal', 'utilGaz', 'asfalt', 'garaj', 'intravilan', 'utilApa', 'utilCanalT', 'utilGazT', 'utilCurent', 'acces', 'destinatie' );
 }
 
 function novaria_ev_handle_lead( $p ) {
@@ -358,7 +359,7 @@ function novaria_ev_handle_lead( $p ) {
 		} elseif ( is_numeric( $v ) ) {
 			$s[ $key ] = 0 + $v;
 		} else {
-			$s[ $key ] = sanitize_text_field( substr( (string) $v, 0, 40 ) );
+			$s[ $key ] = sanitize_text_field( mb_substr( (string) $v, 0, 'strada' === $key ? 80 : 40 ) );
 		}
 	}
 	$tip  = isset( $s['tip'] ) && in_array( $s['tip'], array( 'apartament', 'casa', 'teren' ), true ) ? $s['tip'] : '';
@@ -377,7 +378,7 @@ function novaria_ev_handle_lead( $p ) {
 	}
 
 	$tip_lbl = array( 'apartament' => 'Apartament', 'casa' => 'Casă', 'teren' => 'Teren' );
-	$title   = trim( ( $tip ? $tip_lbl[ $tip ] : 'Proprietate' ) . ( $mp ? ' ' . round( $mp ) . ' mp' : '' ) . ( $zona ? ', ' . $zona : '' ) . ' — ' . $tel );
+	$title   = trim( ( $tip ? $tip_lbl[ $tip ] : 'Proprietate' ) . ( $mp ? ' ' . round( $mp ) . ' mp' : '' ) . ( ! empty( $s['strada'] ) ? ', ' . $s['strada'] : '' ) . ( $zona ? ', ' . $zona : '' ) . ' — ' . $tel );
 	$post_id = wp_insert_post(
 		array(
 			'post_type'   => 'novaria_lead',
@@ -434,6 +435,7 @@ function novaria_ev_lead_lines( $post_id ) {
 	$L[] = '';
 	$L[] = 'Proprietatea: ' . get_the_title( $post_id );
 	$labels = array(
+		'strada' => 'Strada', 'microPct' => 'Strada față de media zonei (%)',
 		'camere' => 'Camere', 'an' => 'An construcție', 'etaj' => 'Etaj', 'etajeTotal' => 'Din etaje', 'stare' => 'Stare',
 		'parcareNr' => 'Locuri parcare', 'parcareTip' => 'Tip parcare', 'teren' => 'Teren (mp)', 'tipCasa' => 'Tip casă',
 		'compart' => 'Compartimentare', 'incalzire' => 'Încălzire', 'balcon' => 'Balcon', 'metrou' => 'Metrou (min)',
