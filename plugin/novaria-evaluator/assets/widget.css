@@ -69,7 +69,7 @@
 .nvev .nvev-btn:active { transform: translateY(1px); }
 .nvev .nvev-btn:focus-visible { outline: 3px solid var(--nvev-focus); outline-offset: 2px; }
 .nvev .nvev-btn[disabled] { opacity: .65; cursor: progress; }
-.nvev .nvev-btn.nvev-accent { background: var(--nvev-accent); }
+.nvev .nvev-btn.nvev-accent { background: var(--nvev-accent); color: var(--nvev-main); }
 .nvev .nvev-btn.nvev-ghost { background: transparent; color: var(--nvev-main); border: 1px solid var(--nvev-line); min-height: 44px; font-size: 15px; width: auto; margin: 0; }
 
 /* rezultat */
