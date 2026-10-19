@@ -37,7 +37,7 @@
   border: 1px solid var(--nvev-line); border-radius: 10px; box-shadow: none; text-transform: none; letter-spacing: normal;
   -webkit-appearance: none; appearance: none;
 }
-.nvev select.nvev-inp { padding-right: 34px; background-image: linear-gradient(45deg, transparent 50%, var(--nvev-muted) 50%), linear-gradient(135deg, var(--nvev-muted) 50%, transparent 50%); background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+.nvev select.nvev-inp { padding-right: 34px !important; background-color: #fff !important; background-image: linear-gradient(45deg, transparent 50%, var(--nvev-muted) 50%), linear-gradient(135deg, var(--nvev-muted) 50%, transparent 50%) !important; background-position: calc(100% - 18px) 20px, calc(100% - 13px) 20px !important; background-size: 5px 5px, 5px 5px !important; background-repeat: no-repeat !important; }
 .nvev .nvev-inp:hover, .nvev .zc-inp:hover { border-color: color-mix(in srgb, var(--nvev-accent) 50%, var(--nvev-line)); }
 .nvev .nvev-inp:focus, .nvev .zc-inp:focus { outline: none; border-color: var(--nvev-focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nvev-focus) 20%, transparent); }
 .nvev .nvev-bad .nvev-inp, .nvev .nvev-bad .zc-inp { border-color: var(--nvev-bad); }
