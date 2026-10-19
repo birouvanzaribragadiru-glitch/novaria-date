@@ -30,7 +30,20 @@ function readColl(name) {
   }
   return o;
 }
-const src = { piata: readColl('piata'), agentii: readColl('agentii'), portaluri: readColl('portaluri'), lipite: readColl('lipite') };
+// anunțurile capturate: din 20.10.2026 stau în pachete (capturi/s000…s127, fiecare cu {a: {id: anunț}});
+// colecția veche „lipite” (un document pe anunț) se citește doar dacă e în dump, iar pachetele au întâietate
+function readCaptures() {
+  const o = readColl('lipite'), packs = readColl('capturi');
+  let n = 0;
+  for (const k of Object.keys(packs)) {
+    const a = packs[k] && packs[k].a;
+    if (!a || typeof a !== 'object') continue;
+    for (const id of Object.keys(a)) { const v = a[id]; if (v && typeof v === 'object') { o[id] = v; n++; } }
+  }
+  if (Object.keys(packs).length) console.log('capturi:', Object.keys(packs).length, 'pachete,', n, 'anunțuri');
+  return o;
+}
+const src = { piata: readColl('piata'), agentii: readColl('agentii'), portaluri: readColl('portaluri'), lipite: readCaptures() };
 const ref = readColl('referinte').imo360 || null;
 const setari = readColl('setari').general || {};
 const now = Date.now();
