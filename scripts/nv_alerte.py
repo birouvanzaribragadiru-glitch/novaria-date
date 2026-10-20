@@ -4,6 +4,7 @@
 #
 #   python3 nv_alerte.py DIR                 -> procesează DIR/mail/*.json și scrie DIR/out/
 #   python3 nv_alerte.py DIR --doar-numara   -> doar numără ce ar extrage (fără stare, fără scrieri)
+#   python3 nv_alerte.py DIR --reproceseaza  -> nu sare peste mesajele deja „procesate” (recitire după schimbarea parserului)
 #
 # DIR/mail/*.json      rezultatele brute ale tool-ului Gmail get_thread / get_message (FULL_CONTENT), oricâte fișiere
 # DIR/prev/capturi/    documentele existente „capturi/sNNN” (descărcate cu ArtifactData list, out_dir), opțional
@@ -25,6 +26,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 BASE = os.path.abspath(args[0] if args else '.')
 COUNT_ONLY = '--doar-numara' in sys.argv
+REPROCESS = '--reproceseaza' in sys.argv   # ignoră lista „procesate” (recitire o singură dată, ex. după schimbarea parserului)
 def utcnow(): return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 TODAY = os.environ.get('NV_TODAY') or (utcnow() + datetime.timedelta(hours=3)).strftime('%Y-%m-%d')
 NOW_MS = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
@@ -324,7 +326,7 @@ chei_vechi = set(stare.get('chei') or [])
 
 listings, per_msg, skipped = [], {}, {'procesate': 0, 'nerelevante': 0, 'olx': 0}
 for mid, m in sorted(messages.items(), key=lambda kv: ms_of(kv[1])):
-    if mid in procesate and not COUNT_ONLY: skipped['procesate'] += 1; continue
+    if mid in procesate and not COUNT_ONLY and not REPROCESS: skipped['procesate'] += 1; continue
     kind = classify(m)
     if kind is None: skipped['nerelevante'] += 1; continue
     if kind == 'olx': skipped['olx'] += 1; per_msg[mid] = 0; continue

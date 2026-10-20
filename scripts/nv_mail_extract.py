@@ -57,13 +57,20 @@ for f in reversed(files):   # de la cel mai vechi la cel mai nou, ca ultima vers
                         cc = c.get('content')
                         if isinstance(cc, list): cc = ''.join(x.get('text', '') for x in cc if isinstance(x, dict))
                         if isinstance(cc, str) and c['tool_use_id'] not in results: results[c['tool_use_id']] = cc
-                        if isinstance(cc, str) and 'version' in cc and ('from collection' in cc or 'Document ' in cc or '"version"' in cc):
+                        if isinstance(cc, str) and 'version' in cc and ('from collection' in cc or 'Document ' in cc or '"version"' in cc or 'batch committed' in cc):
                             coll = None
                             for ln in cc.split('\n'):
                                 mc = re.search(r'from collection "([^"]+)"', ln)
                                 if mc: coll = mc.group(1)
                                 mv = re.search(r'^\s*-\s*"([^"]+)"\s+\d+\s+bytes\s+version\s+(\d+)', ln)
                                 if mv and coll: vers[coll + '/' + mv.group(1)] = (ordine, int(mv.group(2)))
+                                # listări lungi: „[87 more saved documents ... (id, version): "doc" 2, "doc2" 1, ...]”
+                                if coll and 'more saved documents' in ln:
+                                    for md in re.finditer(r'"([^"]+)"\s+(\d+)(?=,|\])', ln.split('(id, version):')[-1]):
+                                        vers[coll + '/' + md.group(1)] = (ordine, int(md.group(2)))
+                                # rezultatele scrierilor: „- update "capturi"/"s000" (version 6)”
+                                mw = re.search(r'^\s*-\s*(?:update|set|str_replace)\s+"([^"]+)"/"([^"]+)"\s+\(version\s+(\d+)\)', ln)
+                                if mw: vers[mw.group(1) + '/' + mw.group(2)] = (ordine, int(mw.group(3)))
                             mg = re.search(r'[Dd]ocument "?([A-Za-z0-9_./~:@+-]+)"? .*?version (\d+)', cc)
                             if mg and '/' in mg.group(1) and not coll:
                                 path = mg.group(1).split('/'); vers['/'.join(path[:-1]) + '/' + path[-1]] = (ordine, int(mg.group(2)))
