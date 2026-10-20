@@ -102,10 +102,15 @@ for (const z of Z.zone) { if (!Z.pts[z.id]) continue; const zl = z.grup === 'Ilf
 const strFile = path.join(path.dirname(outFile), 'strazi.json'), strTxt = JSON.stringify(strPub) + '\n';
 if (!fs.existsSync(strFile) || fs.readFileSync(strFile, 'utf8') !== strTxt) { fs.writeFileSync(strFile, strTxt); console.log('OK', strFile, (strTxt.length / 1024).toFixed(0) + ' KB', '·', strPub.s.length, 'străzi'); }
 
+// La apartamente, „mp” din anunțuri include balconul, iar formularul public cere suprafața utilă fără balcon (balconul separat).
+// Publicăm valorile pe mp util: un apartament tipic, 60 mp în anunț ≈ 56 mp utili + un balcon obișnuit de 4 mp.
+// Conversia se face aici, o singură dată; evaluatorul de pe site primește mpCuBalcon: false, ca să n-o mai repete.
+const BALC_CONV = params.mpCuBalcon === false ? 1 : 60 / 56;
+params.mpCuBalcon = false;
 const zone = zonesEff.map(z => {
   const st = R.stats[z.id] || {}, o = { id: z.id, nume: z.nume, grup: z.grup, alias: z.alias || [], v: {}, lq: z.lichiditate || 'medie' };
   if (z.sector) o.sector = z.sector; if (z.loc) o.loc = z.loc;
-  for (const k of ['apt_vechi', 'apt_nou', 'casa', 'teren']) if (z[k]) o.v[k] = z[k];
+  for (const k of ['apt_vechi', 'apt_nou', 'casa', 'teren']) if (z[k]) o.v[k] = k.startsWith('apt_') ? Math.round(z[k] * BALC_CONV / 10) * 10 : z[k];
   const ps = {};
   for (const t of ['apartament', 'casa', 'teren']) { const p = pubStats(st[t] && st[t].ind); if (p) ps[t] = p; }
   if (Object.keys(ps).length) o.st = ps;
