@@ -1,3 +1,4 @@
 node_modules/
 *.zip
 dump/
+__pycache__/
