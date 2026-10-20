@@ -82,7 +82,7 @@ EXTRA = {   # nume de pe portaluri -> zona din aplicație (completează aliasuri
     'piata sudului': 'oltenitei', 'aparatorii patriei': 'aparatorii', 'brancoveanu': 'brancoveanu', 'luica': 'giurgiului',
     'toporasi': 'giurgiului', 'pieptanari': 'giurgiului', 'margeanului': 'sebastian', 'petre ispirescu': 'sebastian',
     'drumul taberei': 'drumul-taberei', 'favorit': 'drumul-taberei', 'moghioros': 'drumul-taberei', 'romancierilor': 'drumul-taberei',
-    'lujerului': 'lujerului', 'gorjului': 'gorjului', 'uverturii': 'militari', 'veteranilor': 'militari', 'apusului': 'militari',
+    'lujerului': 'lujerului', 'gorjului': 'gorjului', 'uverturii': 'militari', 'virtutii': 'militari', 'rosu': 'chiajna', 'veteranilor': 'militari', 'apusului': 'militari',
     'dezrobirii': 'militari', 'pacii': 'pacii', 'iuliu maniu': 'iuliu-maniu', 'giulesti': 'giulesti', 'ghencea': 'ghencea',
     'prelungirea ghencea': 'prelungirea-ghencea', 'militari residence': 'militari-residence', 'bucurestii noi': 'bucurestii-noi',
     'damaroaia': 'damaroaia', 'pajura': 'pajura', 'straulesti': 'straulesti', 'domenii': 'domenii', 'aviatiei': 'aviatiei',
