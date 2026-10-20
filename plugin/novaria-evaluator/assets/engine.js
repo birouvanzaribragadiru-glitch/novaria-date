@@ -59,6 +59,7 @@ var CMA = (function () {
   var DEFAULT_PARAMS = {
     benchDisc: 0.12,    // media prețurilor cerute în zonă → preț de vânzare (include anunțurile supraevaluate care nu se vând)
     negDisc: 0.08,      // un anunț comparabil activ → preț de vânzare
+    mpCuBalcon: true,   // la apartamente, „mp” din anunțuri include balconul (practica din piață); proprietatea evaluată are suprafața utilă fără balcon
     staleDays: 90, staleExtra: 0.05, retrasDisc: 0.10,
     driftLunar: 0.004,
     benchWeight: 1.2, useBench: true,
@@ -83,6 +84,8 @@ var CMA = (function () {
   function balcMp(o) { if (!o || o.mpBalcon === '' || o.mpBalcon == null) return null; var b = num(o.mpBalcon); return b == null || b < 0 ? null : Math.min(b, 300); }
   function balcK(o) { return o.balcon === 'terasa' ? BALC_K.terasa : BALC_K.da; }
   function balcFactor(o) { var b = balcMp(o), m = num(o.mp); if (b == null || !m) return null; return clamp(1 + (balcK(o) * b - BALC_K.da * BALC_TIPIC) / m, 0.93, 1.15); }
+  // suprafața utilă a unui apartament din anunț: din „mp” scris scădem balconul (cel dat, altfel unul obișnuit)
+  function mpUtilAnunt(o, P) { var mp = num(o.mp); if (!mp || !P || !P.mpCuBalcon) return mp; var b = balcMp(o); if (b == null) b = o.balcon === 'nu' ? 0 : BALC_TIPIC; var u = mp - b; return u >= mp * 0.75 ? u : mp; }
   function balcEff(o) { var f = balcFactor(o); return f != null ? f : known(o.balcon) ? fac('balcon', o.balcon) : null; }
   function balcLabel(o) { var b = balcMp(o); if (!b) return 'fără balcon'; return (o.balcon === 'terasa' ? 'terasă ' : 'balcon ') + (Math.round(b * 10) / 10) + ' mp, socotit la ' + Math.round(balcK(o) * 100) + '% din prețul pe mp util'; }
 
@@ -256,6 +259,9 @@ var CMA = (function () {
     var exS = extrasValue(s, tip, ilf);
     var exC = extrasKnown(c, tip) ? extrasValue(c, tip, ilf) : exS;
     var core = price - exC, ppm0 = core / mp, ppm = ppm0;
+    // apartamente: anunțul dă suprafața cu balcon; o aducem la suprafața utilă, ca să se compare cu proprietatea ta (doar conversie, nu diferență)
+    var mpU = tip === 'apartament' ? mpUtilAnunt(c, P) : mp;
+    if (mpU && mpU < mp) { ppm *= mp / mpU; adj.push({ k: 'Balconul din suprafața anunțului', f: mp / mpU, mode: 'mul', note: mp + ' mp din anunț ≈ ' + Math.round(mpU * 10) / 10 + ' mp utili' }); }
     if (Math.round(exC) !== Math.round(exS)) adj.push({ k: 'Parcare / boxă / garaj', v: exS - exC, mode: 'abs', note: 'valoare separată de €/mp' });
     function mul(label, f, note) { checked++; if (f == null) { unknown++; return; } if (Math.abs(f - 1) < 0.0005) return; ppm *= f; adj.push({ k: label, f: f, mode: 'mul', note: note || '' }); }
 
@@ -296,7 +302,7 @@ var CMA = (function () {
       // cu balconul în mp: comparabila fără date despre balcon e socotită cu un balcon obișnuit
       if (balcMp(s) != null) { var fbc = balcEff(c); mul('Balcon (' + (balcMp(c) != null ? balcLabel(c).split(',')[0] : known(c.balcon) ? lbl('balcon', c.balcon).toLowerCase() : 'balcon obișnuit') + ' → ' + balcLabel(s).split(',')[0] + ')', balcFactor(s) / (fbc == null ? 1 : fbc)); }
       else if (known(c.balcon) && known(s.balcon)) mul('Balcon', fac('balcon', s.balcon) / fac('balcon', c.balcon));
-      mul('Suprafață (' + mp + ' → ' + num(s.mp) + ' mp)', sizeFactor(s.mp, 60) / sizeFactor(mp, 60));
+      mul('Suprafață (' + (mpU < mp ? Math.round(mpU * 10) / 10 + ' utili' : mp) + ' → ' + num(s.mp) + ' mp)', sizeFactor(s.mp, 60) / sizeFactor(mpU, 60));
     } else if (tip === 'casa') {
       var es = eraCasa(s.an), ec = eraCasa(c.an);
       mul('Vechime', (es != null && ec != null) ? es / ec : null, eraLabel(c.an) + ' → ' + eraLabel(s.an));
@@ -324,7 +330,7 @@ var CMA = (function () {
 
     var gross = 0;
     adj.forEach(function (a) {
-      if (/^(Negociere|Anunț expirat|Evoluția|Strada)/.test(a.k)) return;
+      if (/^(Negociere|Anunț expirat|Evoluția|Strada|Balconul din suprafața)/.test(a.k)) return;
       if (a.mode === 'mul') gross += Math.abs(Math.log(a.f));
       else if (a.mode === 'add') gross += Math.abs(a.ppmDelta) / ppm0;
       else if (a.mode === 'abs') gross += Math.abs(a.v) / core;
@@ -357,6 +363,8 @@ var CMA = (function () {
     if (!mpS) { res.error = 'Completează suprafața proprietății.'; return res; }
 
     var bench = benchmark(s, z);
+    // media zonei vine din anunțuri (mp cu balcon): pe mp util, aceeași sumă se împarte la mai puțini mp
+    if (bench && s.tip === 'apartament' && P.mpCuBalcon) { bench.balcConv = (mpS + BALC_TIPIC) / mpS; bench.ppm *= bench.balcConv; }
     res.bench = bench;
     var benchTx = bench ? bench.ppm * (1 - P.benchDisc) : null;
     res.benchTx = benchTx;

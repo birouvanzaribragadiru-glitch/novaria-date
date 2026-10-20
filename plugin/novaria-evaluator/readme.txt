@@ -4,7 +4,7 @@ Tags: imobiliare, evaluare, real estate, valuation
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 
 Evaluator online pentru apartamente, case și terenuri din București și Ilfov, cu date de piață actualizate zilnic.
@@ -27,6 +27,10 @@ Setări → Novaria Evaluator: emailul pentru lead-uri, telefonul și WhatsApp-u
 Se salvează doar ce completează vizitatorul (telefon, opțional nume și email), datele proprietății și estimarea afișată, plus momentul acordului. Lead-urile mai vechi decât perioada aleasă în setări se șterg automat. Plugin-ul se leagă de instrumentele WordPress de export și ștergere a datelor personale (Unelte → Exportă / Șterge date personale).
 
 == Changelog ==
+
+= 1.2.1 =
+* Străzile notate de agenție se aplică la toate tipurile de proprietăți, cu eticheta potrivită.
+* Evaluatorul știe că suprafața din anunțuri include balconul (datele publicate sunt deja pe mp util).
 
 = 1.2.0 =
 * Suprafața utilă și balconul / terasa se scriu separat: balconul nu intră în suprafața utilă și contează cam la jumătate din prețul pe mp (terasa, cam 30%), față de un balcon obișnuit.

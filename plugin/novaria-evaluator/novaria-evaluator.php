@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.2.0' );
+define( 'NOVARIA_EV_VER', '1.2.1' );
 define( 'NOVARIA_EV_FILE', __FILE__ );
 define( 'NOVARIA_EV_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NOVARIA_EV_URL', plugin_dir_url( __FILE__ ) );

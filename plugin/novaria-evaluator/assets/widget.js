@@ -87,10 +87,12 @@
   // factorul străzii: procentul publicat × cât se aplică la tipul ales (0 unde anunțurile nu arată diferențe clare)
   function microFor(zid, tip, k) {
     var M = S.data && S.data.micro; if (!M || !M.z || !k || k.charAt(0) === '~') return null;
-    var e = M.z[zid] && M.z[zid][k], sc = (M.scala && M.scala[tip]) || 0; if (!e || !sc) return null;
+    // al 4-lea câmp = 1: strada e notată de agenție (se aplică la toate tipurile, nu doar unde anunțurile arată diferențe)
+    var e = M.z[zid] && M.z[zid][k]; if (!e) return null;
+    var man = e[3] === 1, sc = man ? 1 : ((M.scala && M.scala[tip]) || 0); if (!sc) return null;
     var f = e[0] / 100 * sc; if (Math.abs(f) < 0.005) return null;
     var pct = Math.round(f * 100), src = e[1] ? anunturi(e[1]) + ' de pe stradă' + (e[2] ? ' și ' + anunturi(e[2]) + ' din jur' : '') : anunturi(e[2]) + ' de pe străzile din jur';
-    return { f: f, pct: pct, nm: k.split('|')[0], label: (pct > 0 ? '+' : '−') + Math.abs(pct) + '% față de media zonei, din ' + src };
+    return { f: f, pct: pct, nm: k.split('|')[0], label: (pct > 0 ? '+' : '−') + Math.abs(pct) + '% față de media zonei, ' + (man ? 'după analiza Novaria a străzii' : 'din ' + src) };
   }
 
   // ---------- formular ----------
@@ -334,7 +336,7 @@
     h += '<li>Cerere în zonă: <b>' + esc(r.liq || 'medie') + '</b>. La prețul realist, vânzarea durează de obicei ' + esc(tm.realist || '2–4 luni') + '.</li>';
     if (x.s.strada) {
       var M = S.data && S.data.micro, sc = M && M.scala ? M.scala[S.tip] || 0 : 0;
-      if (x.s.micro) h += '<li>' + esc(x.s.micro.nm) + ': <b>' + esc(x.s.micro.label.split(',')[0]) + '</b>, calculat din anunțurile de pe stradă și din jur.</li>';
+      if (x.s.micro) h += '<li>' + esc(x.s.micro.nm) + ': <b>' + esc(x.s.micro.label.split(',')[0]) + '</b>, ' + (/după analiza Novaria/.test(x.s.micro.label) ? 'după analiza Novaria a străzii.' : 'calculat din anunțurile de pe stradă și din jur.') + '</li>';
       else if (S.f.strada.charAt(0) === '~') h += '<li>Strada scrisă (' + esc(x.s.strada) + ') nu e în lista noastră; am folosit media zonei.</li>';
       else if (!sc) h += '<li>La ' + (S.tip === 'apartament' ? 'apartamente' : S.tip === 'casa' ? 'case' : 'terenuri') + ' nu vedem încă în anunțuri diferențe clare între străzile aceleiași zone, așa că am folosit media zonei' + (S.tip === 'apartament' && isBuc() ? ' și distanța până la metrou' : '') + '.</li>';
       else h += '<li>Pentru ' + esc(x.s.strada) + ' nu avem încă destule anunțuri pe stradă și în jur; am folosit media zonei.</li>';

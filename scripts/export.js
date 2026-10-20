@@ -89,6 +89,15 @@ if (Object.keys(MC.scala).some(k => MC.scala[k] > 0)) for (const zid of Object.k
   for (const [k, e] of Object.entries(MC.zone[zid])) { if (e[1] + e[2] < MIN_STR || Math.abs(e[0]) < 1) continue; o[k] = [Math.round(e[0]), Math.round(e[1]), Math.round(e[2])]; nPub++; }
   if (Object.keys(o).length) microZ[zid] = o;
 }
+// străzile notate de Lucian în aplicație (Setări → Străzile notate de tine) au întâietate față de anunțuri, la toate tipurile:
+// [procent, anunțuri pe stradă, anunțuri în jur, 1 = notă manuală]
+let nMan = 0;
+for (const [kk, v] of Object.entries((setari && setari.strazi) || {})) {
+  const p = String(kk).split('|'); if (p.length < 3 || v === '' || v == null || !isFinite(+v)) continue;
+  const zid = p[0], k = p[1] + '|' + p[2], auto = MC.zone[zid] && MC.zone[zid][k];
+  (microZ[zid] = microZ[zid] || {})[k] = [Math.round(+v), auto ? Math.round(auto[1]) : 0, auto ? Math.round(auto[2]) : 0, 1]; nMan++;
+}
+if (nMan) console.log('   străzi notate de tine:', nMan);
 const micro = { scala: MC.scala, n: MC.anunturi, z: microZ };
 
 // lista publică a străzilor (se schimbă doar când se reface indexul OpenStreetMap)
