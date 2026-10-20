@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.2.1' );
+define( 'NOVARIA_EV_VER', '1.3.0' );
 define( 'NOVARIA_EV_FILE', __FILE__ );
 define( 'NOVARIA_EV_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NOVARIA_EV_URL', plugin_dir_url( __FILE__ ) );
@@ -301,7 +301,7 @@ function novaria_ev_clean_num( $v, $min, $max ) {
 
 /** Câmpurile proprietății acceptate (restul se ignoră). */
 function novaria_ev_subject_keys() {
-	return array( 'tip', 'zona', 'strada', 'microPct', 'mp', 'mpBalcon', 'camere', 'an', 'etaj', 'etajeTotal', 'lift', 'stare', 'compart', 'incalzire', 'balcon', 'parcareNr', 'parcareTip', 'metrou', 'seismic', 'anvelopat', 'juridic', 'teren', 'tipCasa', 'structura', 'regim', 'front', 'utilCanal', 'utilGaz', 'asfalt', 'garaj', 'intravilan', 'utilApa', 'utilCanalT', 'utilGazT', 'utilCurent', 'acces', 'destinatie' );
+	return array( 'tip', 'zona', 'strada', 'ansamblu', 'microPct', 'mp', 'mpBalcon', 'camere', 'an', 'etaj', 'etajeTotal', 'lift', 'stare', 'compart', 'incalzire', 'balcon', 'parcareNr', 'parcareTip', 'metrou', 'seismic', 'anvelopat', 'juridic', 'teren', 'tipCasa', 'structura', 'regim', 'front', 'utilCanal', 'utilGaz', 'asfalt', 'garaj', 'intravilan', 'utilApa', 'utilCanalT', 'utilGazT', 'utilCurent', 'acces', 'destinatie' );
 }
 
 function novaria_ev_handle_lead( $p ) {
@@ -359,7 +359,7 @@ function novaria_ev_handle_lead( $p ) {
 		} elseif ( is_numeric( $v ) ) {
 			$s[ $key ] = 0 + $v;
 		} else {
-			$s[ $key ] = sanitize_text_field( mb_substr( (string) $v, 0, 'strada' === $key ? 80 : 40 ) );
+			$s[ $key ] = sanitize_text_field( mb_substr( (string) $v, 0, ( 'strada' === $key || 'ansamblu' === $key ) ? 80 : 40 ) );
 		}
 	}
 	$tip  = isset( $s['tip'] ) && in_array( $s['tip'], array( 'apartament', 'casa', 'teren' ), true ) ? $s['tip'] : '';
@@ -435,7 +435,7 @@ function novaria_ev_lead_lines( $post_id ) {
 	$L[] = '';
 	$L[] = 'Proprietatea: ' . get_the_title( $post_id );
 	$labels = array(
-		'strada' => 'Strada', 'microPct' => 'Strada față de media zonei (%)', 'mpBalcon' => 'Balcon / terasă (mp)',
+		'strada' => 'Strada', 'ansamblu' => 'Ansamblu rezidențial', 'microPct' => 'Strada / ansamblul față de media zonei (%)', 'mpBalcon' => 'Balcon / terasă (mp)',
 		'camere' => 'Camere', 'an' => 'An construcție', 'etaj' => 'Etaj', 'etajeTotal' => 'Din etaje', 'stare' => 'Stare',
 		'parcareNr' => 'Locuri parcare', 'parcareTip' => 'Tip parcare', 'teren' => 'Teren (mp)', 'tipCasa' => 'Tip casă',
 		'compart' => 'Compartimentare', 'incalzire' => 'Încălzire', 'balcon' => 'Balcon', 'metrou' => 'Metrou (min)',

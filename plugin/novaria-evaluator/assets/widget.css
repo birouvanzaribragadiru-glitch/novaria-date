@@ -149,3 +149,4 @@
   .nvev .nvev-range { background: #fff !important; color: #000 !important; border: 2px solid #000; }
 }
 @media (prefers-reduced-motion: reduce) { .nvev * { transition: none !important; animation: none !important; } }
+.nvev-f.nvev-hide { display: none; }

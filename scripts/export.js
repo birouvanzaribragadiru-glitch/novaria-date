@@ -14,6 +14,7 @@ global.window = global;
 require(path.join(ROOT, 'lib/market.js'));
 require(path.join(ROOT, 'lib/geo.js'));
 require(path.join(ROOT, 'lib/micro.js'));
+require(path.join(ROOT, 'lib/ansambluri.js'));
 const CMA = require(path.join(ROOT, 'lib/engine.js'));
 const Z = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib/zones.json'), 'utf8'));
 
@@ -100,6 +101,17 @@ for (const [kk, v] of Object.entries((setari && setari.strazi) || {})) {
 if (nMan) console.log('   străzi notate de tine:', nMan);
 const micro = { scala: MC.scala, n: MC.anunturi, z: microZ };
 
+// ansamblurile rezidențiale: diferența față de zonă (nota lui Lucian sau, altfel, din anunțurile care pomenesc ansamblul).
+// Public: doar numele, zona și procentul pe tip; niciun anunț.
+const ANS_REG = NV_ANS.registry((setari && setari.ansambluri) || {});
+const ANS_ST = NV_ANS.stats(ANS_REG, rowsM.map(r => ({ zona: r.zona, tip: r.tip, pret: r.a.pret, mp: r.a.mp, text: [r.a.titlu, r.a.adresa, r.a.reper, r.a.rezumat].join(' ') })));
+const ans = [];
+for (const e of ANS_REG) {
+  const p = {}; for (const t of ['apartament', 'casa']) { const f = NV_ANS.factor(e, ANS_ST, t); if (f) p[t] = f.pct; }
+  if (Object.keys(p).length) ans.push({ id: e.id, n: e.nume, z: e.zona || '', p });
+}
+console.log('   ansambluri cu diferență față de zonă:', ans.map(a => a.n + ' ' + JSON.stringify(a.p)).join(' · ') || '—');
+
 // lista publică a străzilor (se schimbă doar când se reface indexul OpenStreetMap)
 const mo = s => { if (!/^Sector /.test(s.loc)) return 0; const m = NV_MICRO.metroOpt(GI, s.c); return m ? +m.opt : 0; };
 const LOCS = [], LI = {};
@@ -137,7 +149,8 @@ const out = {
   imo360: ref ? { luna: ref.luna || null, trendOras: R.trendOras } : null,
   params,
   zone,
-  micro
+  micro,
+  ans
 };
 // verificare de siguranță: nimic care să arate a link, telefon sau email
 const txt = JSON.stringify(out);
