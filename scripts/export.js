@@ -49,6 +49,23 @@ const ref = readColl('referinte').imo360 || null;
 const setari = readColl('setari').general || {};
 const istoric = readColl('istoric');                 // istoricul săptămânal pe zone (colectarea de luni): dinamica pieței
 const tranzactii = readColl('tranzactii');           // vânzările reale (registrul din aplicație): doar cifre agregate ies de aici
+// vânzările agenților (sertarele agenti/<id>/tranzactii din aplicația principală și din copia Parteneri, la <dump>/parteneri/…):
+// intră în calibrarea negocierii la fel ca ale lui Lucian, fără nume și fără linkuri
+let nAgSales = 0;
+for (const base of [dump, path.join(dump, 'parteneri')]) {
+  const ag = path.join(base, 'agenti');
+  if (!fs.existsSync(ag)) continue;
+  for (const uid of fs.readdirSync(ag)) {
+    const dir = path.join(ag, uid, 'tranzactii');
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.json')) continue;
+      try { const v = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); if (v && v.id && !tranzactii[v.id]) { tranzactii['ag:' + uid.slice(-6) + ':' + v.id] = v; nAgSales++; } }
+      catch (e) { console.error('ignor', dir + '/' + f, e.message); }
+    }
+  }
+}
+if (nAgSales) console.log('   vânzări ale agenților:', nAgSales);
 const chirii = readColl('chirii');                   // anunțuri de închiriere (din alertele portalurilor): chiria mediană pe zonă → randament brut
 const now = Date.now();
 
