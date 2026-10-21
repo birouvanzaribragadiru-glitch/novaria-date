@@ -242,11 +242,19 @@ def parse_imobiliare(msg):
     return out
 
 HIDDEN = {'storia': 0, 'imobiliare': 0, 'emailuri_cu_ascunse': 0}
+PLINE = {}
 def parse_storia(msg):
     body = msg.get('plaintextBody') or ''
     mh = re.search(r'Verific[ăa]\s+restul.*?(\d+)\s*anun', body, re.S)
     if mh: HIDDEN['storia'] += int(mh.group(1)); HIDDEN['emailuri_cu_ascunse'] += 1
     subj = msg.get('subject') or ''
+    # căutările Storia „pline”: e-mailul arată doar 5 anunțuri și numără cel mult 31 („Am găsit N anunțuri”);
+    # cele care trec de 5 trebuie împărțite mai fin (preț, camere, suprafață), altfel pierdem anunțuri
+    mg = re.search(r'Am g[ăa]sit\s+(\d+)\s+anun', body)
+    if mg and int(mg.group(1)) > 5:
+        k = re.sub(r',?\s*case noi [șs]i deja locuite', '', re.sub(r'\s+', ' ', subj)).strip()[:60]
+        e = PLINE.setdefault(k, {'max': 0, 'emailuri': 0, 'ascunse': 0})
+        e['max'] = max(e['max'], int(mg.group(1))); e['emailuri'] += 1; e['ascunse'] += int(mg.group(1)) - 5
     tip = tip_from(subj) or 'apartament'
     if body.strip():
         lines = [re.sub(r'\s+', ' ', l).strip() for l in body.split('\n')]
@@ -574,7 +582,7 @@ for a in uniq: src[a['sursa']] = src.get(a['sursa'], 0) + 1
 rez = {'mesaje_noi': len(per_msg), 'sarite': skipped, 'anunturi_unice': len(uniq), 'pe_surse': src, 'cu_zona': sum(1 for a in uniq if a.get('zona')),
        'fara_zona': sum(1 for a in uniq if not a.get('zona')), 'persoane': sum(1 for a in uniq if a.get('vanzator') == 'persoana'),
        'capturi': {'noi': cap_new, 'actualizate': cap_upd, 'sterse_vechi': cap_del, 'shard_uri': len(by_shard)}, 'portaluri_docs': port_docs,
-       'alerte_azi': len(al_items), 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
+       'alerte_azi': len(al_items), 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
 with open(os.path.join(out_dir, 'rezumat.json'), 'w', encoding='utf-8') as f: json.dump(rez, f, ensure_ascii=False, indent=1)
 print('Rezumat:', json.dumps(rez, ensure_ascii=False))
 print('Scrieri:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(out_dir, 'writes.json'))
