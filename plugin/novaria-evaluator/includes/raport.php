@@ -204,6 +204,6 @@ function novaria_ev_raport_lunar() {
 	update_option( 'novaria_ev_raport_luna', $luna, false );
 	if ( $facute ) {
 		$to = is_email( $o['email'] ) ? $o['email'] : get_option( 'admin_email' );
-		wp_mail( $to, 'Novaria: ' . $facute . ' rapoarte de piață pentru ' . wp_date( 'F Y' ) . ( empty( $o['raport_auto'] ) ? ' (ciorne, de publicat)' : ' (publicate)' ), ( empty( $o['raport_auto'] ) ? "Rapoartele lunare de piață sunt gata ca ciorne. Citește-le și publică-le:\n" : "Rapoartele lunare de piață au fost publicate:\n" ) . admin_url( 'edit.php?category_name=piata-imobiliara' ) );
+		novaria_ev_mail( $to, 'Novaria: ' . $facute . ' rapoarte de piață pentru ' . wp_date( 'F Y' ) . ( empty( $o['raport_auto'] ) ? ' (ciorne, de publicat)' : ' (publicate)' ), ( empty( $o['raport_auto'] ) ? "Rapoartele lunare de piață sunt gata ca ciorne. Citește-le și publică-le:\n" : "Rapoartele lunare de piață au fost publicate:\n" ) . admin_url( 'edit.php?category_name=piata-imobiliara' ) );
 	}
 }

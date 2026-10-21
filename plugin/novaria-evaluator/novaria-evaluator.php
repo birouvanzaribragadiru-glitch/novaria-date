@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.5.1
+ * Version:           1.5.2
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.5.1' );
+define( 'NOVARIA_EV_VER', '1.5.2' );
 require_once __DIR__ . '/includes/raport.php';
 require_once __DIR__ . '/includes/urmarire.php';
 define( 'NOVARIA_EV_KEY_OPT', 'novaria_ev_api_key' );   // cheia cu care aplicația internă Novaria citește evaluările de pe site
@@ -43,6 +43,8 @@ function novaria_ev_defaults() {
 		'color_main'    => '#13233F',
 		'color_accent'  => '#A07B2C',
 		'email_client'  => 1,
+		'from_nume'     => 'Novaria',
+		'from_email'    => '', // gol = contact@<domeniul site-ului>
 		'urmarire'      => 1,
 		'raport_zone'   => 'bragadiru,domnesti,drumul-taberei,rahova,militari,popesti-leordeni',
 		'raport_auto'   => 0,
@@ -58,6 +60,52 @@ function novaria_ev_opts() {
 function novaria_ev_hex( $c, $fallback ) {
 	$c = sanitize_hex_color( $c );
 	return $c ? $c : $fallback;
+}
+
+/* ------------------------------------------------------------------ */
+/* Expeditorul mailurilor                                              */
+/* ------------------------------------------------------------------ */
+
+/** Domeniul site-ului (fără www). */
+function novaria_ev_site_host() {
+	$h = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+	return preg_replace( '/^www\./', '', strtolower( $h ) );
+}
+
+/** Adresa e pe domeniul site-ului (sau un subdomeniu)? Altfel mailurile pică la SPF/DMARC și ajung în spam. */
+function novaria_ev_same_domain( $em, $host ) {
+	$at = strrchr( (string) $em, '@' );
+	if ( ! $at || ! $host ) {
+		return false;
+	}
+	$d = strtolower( substr( $at, 1 ) );
+	return $d === $host || substr( $d, -strlen( '.' . $host ) ) === '.' . $host;
+}
+
+/** Adresa expeditorului: cea din setări dacă e pe domeniul site-ului, altfel contact@<domeniu>. */
+function novaria_ev_from_email() {
+	$o    = novaria_ev_opts();
+	$host = novaria_ev_site_host();
+	$em   = isset( $o['from_email'] ) ? strtolower( trim( (string) $o['from_email'] ) ) : '';
+	if ( $em && is_email( $em ) && novaria_ev_same_domain( $em, $host ) ) {
+		return $em;
+	}
+	return 'contact@' . $host;
+}
+
+function novaria_ev_from_name() {
+	$o = novaria_ev_opts();
+	return ! empty( $o['from_nume'] ) ? (string) $o['from_nume'] : 'Novaria';
+}
+
+/** Toate mailurile plugin-ului pleacă pe aici, cu expeditorul setat (nu „WordPress <wordpress@…>”). */
+function novaria_ev_mail( $to, $subject, $body, $headers = array() ) {
+	add_filter( 'wp_mail_from', 'novaria_ev_from_email', 99 );
+	add_filter( 'wp_mail_from_name', 'novaria_ev_from_name', 99 );
+	$ok = wp_mail( $to, $subject, $body, $headers );
+	remove_filter( 'wp_mail_from', 'novaria_ev_from_email', 99 );
+	remove_filter( 'wp_mail_from_name', 'novaria_ev_from_name', 99 );
+	return $ok;
 }
 
 /* ------------------------------------------------------------------ */
@@ -732,7 +780,7 @@ function novaria_ev_mail_lead( $post_id ) {
 	$who = get_post_meta( $post_id, '_novaria_nume', true );
 	$who = $who ? $who : get_post_meta( $post_id, '_novaria_telefon', true );
 	$zn  = get_post_meta( $post_id, '_novaria_zona', true );
-	wp_mail( $to, 'Lead evaluare: ' . $who . ( $zn ? ' — ' . $zn : '' ), implode( "\n", $L ), $headers );
+	novaria_ev_mail( $to, 'Lead evaluare: ' . $who . ( $zn ? ' — ' . $zn : '' ), implode( "\n", $L ), $headers );
 }
 
 /** Emailul către client (doar dacă și-a lăsat adresa): estimarea și pașii următori. */
@@ -770,7 +818,7 @@ function novaria_ev_mail_client( $post_id ) {
 	$L[] = 'Echipa Novaria';
 	$reply   = is_email( $o['email'] ) ? $o['email'] : get_option( 'admin_email' );
 	$headers = array( 'Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . $reply );
-	wp_mail( $em, 'Estimarea ta Novaria: ' . novaria_ev_fmt_eur( $est['min'] ) . ' – ' . novaria_ev_fmt_eur( $est['max'] ), implode( "\n", $L ), $headers );
+	novaria_ev_mail( $em, 'Estimarea ta Novaria: ' . novaria_ev_fmt_eur( $est['min'] ) . ' – ' . novaria_ev_fmt_eur( $est['max'] ), implode( "\n", $L ), $headers );
 }
 
 /* ------------------------------------------------------------------ */
@@ -859,6 +907,8 @@ function novaria_ev_sanitize_opts( $in ) {
 	$out['color_main']   = isset( $in['color_main'] ) ? novaria_ev_hex( $in['color_main'], $d['color_main'] ) : $d['color_main'];
 	$out['color_accent'] = isset( $in['color_accent'] ) ? novaria_ev_hex( $in['color_accent'], $d['color_accent'] ) : $d['color_accent'];
 	$out['email_client'] = empty( $in['email_client'] ) ? 0 : 1;
+	$out['from_nume']    = isset( $in['from_nume'] ) ? substr( sanitize_text_field( $in['from_nume'] ), 0, 60 ) : $d['from_nume'];
+	$out['from_email']   = isset( $in['from_email'] ) && is_email( $in['from_email'] ) && novaria_ev_same_domain( $in['from_email'], novaria_ev_site_host() ) ? sanitize_email( $in['from_email'] ) : '';
 	$out['urmarire']     = empty( $in['urmarire'] ) ? 0 : 1;
 	$out['raport_auto']  = empty( $in['raport_auto'] ) ? 0 : 1;
 	$out['raport_zone']  = isset( $in['raport_zone'] ) ? implode( ',', array_filter( array_map( 'sanitize_title', explode( ',', (string) $in['raport_zone'] ) ) ) ) : $d['raport_zone'];
@@ -908,6 +958,7 @@ function novaria_ev_settings_page() {
 			<table class="form-table" role="presentation">
 				<tr><th scope="row"><label for="nv-email">Email pentru lead-uri</label></th><td><input id="nv-email" type="email" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[email]" value="<?php echo $f( 'email' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>"></td></tr>
 				<tr><th scope="row">Email către client</th><td><label><input type="checkbox" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[email_client]" value="1" <?php checked( ! empty( $o['email_client'] ) ); ?>> Dacă își lasă adresa, îi trimitem estimarea pe email (Reply-To: emailul pentru lead-uri)</label></td></tr>
+				<tr><th scope="row"><label for="nv-fromn">Expeditorul mailurilor</label></th><td><input id="nv-fromn" type="text" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[from_nume]" value="<?php echo $f( 'from_nume' ); // phpcs:ignore ?>" placeholder="Novaria"> <input id="nv-from" type="email" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[from_email]" value="<?php echo $f( 'from_email' ); // phpcs:ignore ?>" placeholder="contact@<?php echo esc_attr( novaria_ev_site_host() ); ?>"><p class="description">Numele și adresa de la care pleacă mailurile către clienți (estimarea, urmărirea la 30/60/90 de zile) și către tine. Adresa trebuie să fie pe domeniul site-ului (@<?php echo esc_html( novaria_ev_site_host() ); ?>), altfel mailurile ajung în spam; lăsată goală, se folosește contact@<?php echo esc_html( novaria_ev_site_host() ); ?>. Acum pleacă de la: <b><?php echo esc_html( novaria_ev_from_name() . ' <' . novaria_ev_from_email() . '>' ); ?></b>.</p></td></tr>
 				<tr><th scope="row"><label for="nv-phone">Telefon afișat</label></th><td><input id="nv-phone" type="text" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[phone]" value="<?php echo $f( 'phone' ); // phpcs:ignore ?>"></td></tr>
 				<tr><th scope="row"><label for="nv-wa">WhatsApp (cu prefix țară, doar cifre)</label></th><td><input id="nv-wa" type="text" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[whatsapp]" value="<?php echo $f( 'whatsapp' ); // phpcs:ignore ?>"></td></tr>
 				<tr><th scope="row"><label for="nv-priv">Pagina de confidențialitate</label></th><td><input id="nv-priv" type="url" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[privacy_url]" value="<?php echo $f( 'privacy_url' ); // phpcs:ignore ?>"></td></tr>

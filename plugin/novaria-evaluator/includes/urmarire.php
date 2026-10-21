@@ -119,7 +119,7 @@ function novaria_ev_urmarire_trimite( $post_id, $zile ) {
 	$reply   = is_email( $o['email'] ) ? $o['email'] : get_option( 'admin_email' );
 	$headers = array( 'Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . $reply, 'List-Unsubscribe: <' . novaria_ev_unsub_url( $em ) . '>' );
 	$subj    = $ref && $ref['med'] ? 'Ce s-a schimbat în ' . $ref['nume'] . ' de când ai evaluat' : 'Piața din zona ta, la ' . $zile . ' de zile de la evaluare';
-	if ( wp_mail( $em, $subj, implode( "\n", $L ), $headers ) ) {
+	if ( novaria_ev_mail( $em, $subj, implode( "\n", $L ), $headers ) ) {
 		update_post_meta( $post_id, '_novaria_urmarire_' . $zile, current_time( 'mysql' ) );
 	}
 }
