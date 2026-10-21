@@ -29,3 +29,10 @@ Share (dreapta sus) → adresa de e-mail → Editor (singurul rol care, în afar
 
 ## Capturile din paginile de rezultate
 Portalurile (mai ales Storia) umplu paginile cu „alte anunțuri” din toată țara. Din v49 captura ignoră cardurile a căror localizare se termină cu alt județ decât Ilfov/București și scoate din calcul anunțurile cu preț/suprafață evident greșit citite (marcate `exclus`, cu zona inițială păstrată în `zonaInitiala`, deci reversibil). Pe 21 oct. 2026 s-au curățat la fel capturile existente (43 din alte județe, ~65 cu prețuri aberante) și s-a completat `teren` din titlu unde lipsea (`terenDin: "titlu"`).
+
+## Fișa unică și vânzările (v52 principală / v7 Parteneri, 22 oct. 2026)
+- **O singură fișă a proprietății** (`FD` + `FISA` în `app.js`) pentru evaluare, comparabile și vânzări reale: aceleași câmpuri, opțiuni și grupuri (Esențial, Adresa, apoi detaliile). La comparabile un câmp gol e „— necunoscut —”; scara, apartamentul, reperul, situația juridică și metroul nu apar acolo.
+- **Adresa pe câmpuri:** `strada`, `nr`, `bloc`, `scara`, `apNr`, `reper`; `adresa` rămâne textul compus din ele (îl folosesc motorul, rapoartele și căutarea). Dosarele vechi se despart automat la deschidere (`parseAdresa`), fără să se piardă textul vechi. Sub adresă: dacă strada e recunoscută, dacă numărul e în harta OSM și butonul „Arată pe hartă”.
+- **„Vândut” din dosar** (butonul „Am vândut-o” sau stadiul „Vândut”): obligatorii doar prețul final și data. Vânzarea se scrie singură în `tranzactii` cu id `v-<dosar>` (sau preia vânzarea veche legată de dosar / una trecută de mână identică) și se ține la zi din dosar. Dacă dosarul iese din „Vândut”, vânzarea primește `anulat: true` (nu se șterge) și iese din calcul.
+- **Fila „Vânzări”** (sus, nu mai e în Dosare): formular complet (vânzarea + fișa), „Modifică” pentru vânzările fără dosar, „Fă dosar” dintr-o vânzare, avertisment de dublură în pagină (același link sau aceeași zonă + suprafață ±1 mp + preț ±1% + dată ±45 de zile).
+- La „Vândut” direct din „Doar evaluat” data listării nu se mai pune singură pe azi (strica zilele pe piață).
