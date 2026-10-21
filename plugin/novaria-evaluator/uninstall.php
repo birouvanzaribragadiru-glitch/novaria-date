@@ -7,5 +7,6 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 delete_option( 'novaria_ev_opts' );
 delete_option( 'novaria_ev_data_lastgood' );
 delete_option( 'novaria_ev_fetch' );
+delete_option( 'novaria_ev_api_key' );
 delete_transient( 'novaria_ev_data' );
 wp_clear_scheduled_hook( 'novaria_ev_daily' );

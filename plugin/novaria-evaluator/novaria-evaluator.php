@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.3.0
+ * Version:           1.4.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.3.0' );
+define( 'NOVARIA_EV_VER', '1.4.0' );
+define( 'NOVARIA_EV_KEY_OPT', 'novaria_ev_api_key' );   // cheia cu care aplicația internă Novaria citește evaluările de pe site
 define( 'NOVARIA_EV_FILE', __FILE__ );
 define( 'NOVARIA_EV_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NOVARIA_EV_URL', plugin_dir_url( __FILE__ ) );
@@ -150,6 +151,7 @@ function novaria_ev_shortcode( $atts ) {
 	$cfg = array(
 		'dataUrl'    => esc_url_raw( rest_url( 'novaria-evaluator/v1/date' ) ),
 		'leadUrl'    => esc_url_raw( rest_url( 'novaria-evaluator/v1/lead' ) ),
+		'evalUrl'    => esc_url_raw( rest_url( 'novaria-evaluator/v1/evaluare' ) ),
 		'ajaxUrl'    => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 		'bundledUrl' => esc_url_raw( NOVARIA_EV_URL . 'data/evaluator.json?v=' . NOVARIA_EV_VER ),
 		'streetsUrl' => esc_url_raw( NOVARIA_EV_URL . 'data/strazi.json?v=' . NOVARIA_EV_VER ),
@@ -220,6 +222,53 @@ function novaria_ev_register_cpt() {
 			'query_var'           => false,
 		)
 	);
+	// evaluările făcute de vizitatori fără să lase contact: doar proprietatea și estimarea, fără date personale
+	register_post_type(
+		'novaria_eval',
+		array(
+			'labels'              => array(
+				'name'          => 'Evaluări pe site',
+				'singular_name' => 'Evaluare pe site',
+				'menu_name'     => 'Evaluări pe site',
+				'all_items'     => 'Toate evaluările',
+				'not_found'     => 'Nicio evaluare încă.',
+			),
+			'public'              => false,
+			'publicly_queryable'  => false,
+			'exclude_from_search' => true,
+			'show_ui'             => true,
+			'show_in_menu'        => 'edit.php?post_type=novaria_lead',
+			'show_in_rest'        => false,
+			'supports'            => array( 'title' ),
+			'capability_type'     => 'post',
+			'capabilities'        => array(
+				'create_posts'           => 'do_not_allow',
+				'edit_posts'             => 'manage_options',
+				'edit_others_posts'      => 'manage_options',
+				'edit_private_posts'     => 'manage_options',
+				'edit_published_posts'   => 'manage_options',
+				'publish_posts'          => 'manage_options',
+				'read_private_posts'     => 'manage_options',
+				'delete_posts'           => 'manage_options',
+				'delete_others_posts'    => 'manage_options',
+				'delete_private_posts'   => 'manage_options',
+				'delete_published_posts' => 'manage_options',
+			),
+			'map_meta_cap'        => true,
+			'rewrite'             => false,
+			'query_var'           => false,
+		)
+	);
+}
+
+/** Cheia pentru aplicația internă (se generează o dată; se vede în Setări). */
+function novaria_ev_api_key() {
+	$k = get_option( NOVARIA_EV_KEY_OPT, '' );
+	if ( ! is_string( $k ) || strlen( $k ) < 24 ) {
+		$k = wp_generate_password( 40, false, false );
+		update_option( NOVARIA_EV_KEY_OPT, $k, false );
+	}
+	return $k;
 }
 
 /* ------------------------------------------------------------------ */
@@ -246,6 +295,189 @@ function novaria_ev_rest() {
 			'permission_callback' => '__return_true',
 		)
 	);
+	// evaluare anonimă (fără contact), trimisă de widget când vizitatorul vede un rezultat
+	register_rest_route(
+		'novaria-evaluator/v1',
+		'/evaluare',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'novaria_ev_rest_eval',
+			'permission_callback' => '__return_true',
+		)
+	);
+	// citirea evaluărilor și cererilor de pe site de către aplicația internă Novaria (cu cheie)
+	register_rest_route(
+		'novaria-evaluator/v1',
+		'/evaluari',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'novaria_ev_rest_list',
+			'permission_callback' => '__return_true',
+			'args'                => array(
+				'key'   => array( 'type' => 'string', 'required' => true ),
+				'limit' => array( 'type' => 'integer', 'default' => 200 ),
+				'since' => array( 'type' => 'string', 'default' => '' ),
+			),
+		)
+	);
+}
+
+function novaria_ev_rest_eval( WP_REST_Request $req ) {
+	$p = $req->get_json_params();
+	if ( ! is_array( $p ) ) {
+		$p = $req->get_body_params();
+	}
+	$res = novaria_ev_handle_eval( is_array( $p ) ? $p : array() );
+	return new WP_REST_Response( $res['body'], $res['code'] );
+}
+
+/** Evaluare anonimă: o înregistrare pe sesiune de vizitator (sid) și zi, actualizată când vizitatorul schimbă câmpurile. */
+function novaria_ev_handle_eval( $p ) {
+	$fail = function ( $msg, $code = 400 ) {
+		return array( 'code' => $code, 'body' => array( 'ok' => false, 'msg' => $msg ) );
+	};
+	if ( ! empty( $p['website'] ) ) {
+		return array( 'code' => 200, 'body' => array( 'ok' => true ) );
+	}
+	$sid = isset( $p['sid'] ) ? preg_replace( '/[^a-zA-Z0-9_-]/', '', substr( (string) $p['sid'], 0, 40 ) ) : '';
+	if ( strlen( $sid ) < 8 ) {
+		return $fail( 'sid' );
+	}
+	$k  = 'novaria_ev_rle_' . novaria_ev_client_key();
+	$n  = (int) get_transient( $k );
+	if ( $n >= 60 ) {
+		return $fail( 'prea multe', 429 );
+	}
+	$s_in = isset( $p['proprietate'] ) && is_array( $p['proprietate'] ) ? $p['proprietate'] : array();
+	$s    = array();
+	foreach ( novaria_ev_subject_keys() as $key ) {
+		if ( ! isset( $s_in[ $key ] ) || '' === $s_in[ $key ] || null === $s_in[ $key ] ) {
+			continue;
+		}
+		$v = $s_in[ $key ];
+		if ( is_bool( $v ) ) {
+			$s[ $key ] = $v;
+		} elseif ( is_numeric( $v ) ) {
+			$s[ $key ] = 0 + $v;
+		} else {
+			$s[ $key ] = sanitize_text_field( mb_substr( (string) $v, 0, ( 'strada' === $key || 'ansamblu' === $key ) ? 80 : 40 ) );
+		}
+	}
+	$tip  = isset( $s['tip'] ) && in_array( $s['tip'], array( 'apartament', 'casa', 'teren' ), true ) ? $s['tip'] : '';
+	$mp   = isset( $s['mp'] ) ? novaria_ev_clean_num( $s['mp'], 5, 100000 ) : null;
+	if ( ! $tip || ! $mp || empty( $s['zona'] ) ) {
+		return $fail( 'incomplet' );
+	}
+	$zona = isset( $p['zonaNume'] ) ? sanitize_text_field( substr( (string) $p['zonaNume'], 0, 80 ) ) : '';
+	$e_in = isset( $p['estimare'] ) && is_array( $p['estimare'] ) ? $p['estimare'] : array();
+	$est  = array();
+	foreach ( array( 'min', 'max', 'realist', 'rapid', 'listare', 'ppm' ) as $key ) {
+		if ( isset( $e_in[ $key ] ) ) {
+			$v = novaria_ev_clean_num( $e_in[ $key ], 0, 50000000 );
+			if ( null !== $v ) {
+				$est[ $key ] = round( $v );
+			}
+		}
+	}
+	$pagina  = isset( $p['pagina'] ) ? esc_url_raw( substr( (string) $p['pagina'], 0, 300 ) ) : '';
+	$tip_lbl = array( 'apartament' => 'Apartament', 'casa' => 'Casă', 'teren' => 'Teren' );
+	$title   = trim( $tip_lbl[ $tip ] . ' ' . round( $mp ) . ' mp' . ( ! empty( $s['strada'] ) ? ', ' . $s['strada'] : '' ) . ( $zona ? ', ' . $zona : '' ) . ( isset( $est['realist'] ) ? ' — ' . novaria_ev_fmt_eur( $est['realist'] ) : '' ) );
+	// aceeași sesiune în aceeași zi: actualizăm înregistrarea, nu facem alta
+	$ex = get_posts(
+		array(
+			'post_type'      => 'novaria_eval',
+			'post_status'    => 'any',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_key'       => '_novaria_sid', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+			'meta_value'     => $sid, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+			'date_query'     => array( array( 'after' => gmdate( 'Y-m-d H:i:s', time() - DAY_IN_SECONDS ) ) ),
+		)
+	);
+	if ( $ex ) {
+		$post_id = (int) $ex[0];
+		wp_update_post( array( 'ID' => $post_id, 'post_title' => $title ) );
+	} else {
+		$post_id = wp_insert_post( array( 'post_type' => 'novaria_eval', 'post_status' => 'private', 'post_title' => $title ), true );
+		if ( is_wp_error( $post_id ) ) {
+			return $fail( 'salvare', 500 );
+		}
+		update_post_meta( $post_id, '_novaria_sid', $sid );
+		set_transient( $k, $n + 1, HOUR_IN_SECONDS );
+	}
+	update_post_meta( $post_id, '_novaria_zona', $zona );
+	update_post_meta( $post_id, '_novaria_tip', $tip );
+	update_post_meta( $post_id, '_novaria_prop', $s );
+	update_post_meta( $post_id, '_novaria_est', $est );
+	update_post_meta( $post_id, '_novaria_pagina', $pagina );
+	update_post_meta( $post_id, '_novaria_actualizat', current_time( 'mysql', true ) );
+	return array( 'code' => 200, 'body' => array( 'ok' => true, 'id' => $post_id ) );
+}
+
+/** Lista pentru aplicația internă: cererile cu contact (lead-uri) și evaluările anonime, cele mai noi primele. */
+function novaria_ev_rest_list( WP_REST_Request $req ) {
+	$key = (string) $req->get_param( 'key' );
+	if ( ! $key || ! hash_equals( novaria_ev_api_key(), $key ) ) {
+		$r = new WP_REST_Response( array( 'ok' => false, 'msg' => 'cheie greșită' ), 403 );
+		$r->header( 'Cache-Control', 'no-store' );
+		return $r;
+	}
+	$limit = max( 1, min( 500, (int) $req->get_param( 'limit' ) ) );
+	$since = (string) $req->get_param( 'since' );
+	$args  = array( 'post_status' => 'any', 'posts_per_page' => $limit, 'orderby' => 'date', 'order' => 'DESC' );
+	if ( $since && strtotime( $since ) ) {
+		$args['date_query'] = array( array( 'after' => gmdate( 'Y-m-d H:i:s', strtotime( $since ) ), 'column' => 'post_date_gmt' ) );
+	}
+	$out   = array();
+	$sids  = array();
+	foreach ( get_posts( array_merge( $args, array( 'post_type' => 'novaria_lead' ) ) ) as $post ) {
+		$id   = $post->ID;
+		$sid  = (string) get_post_meta( $id, '_novaria_sid', true );
+		if ( $sid ) {
+			$sids[ $sid ] = 1;
+		}
+		$out[] = array(
+			'id'       => 'lead-' . $id,
+			'fel'      => 'lead',
+			't'        => mysql2date( 'c', $post->post_date_gmt, false ),
+			'tip'      => (string) get_post_meta( $id, '_novaria_tip', true ),
+			'zonaNume' => (string) get_post_meta( $id, '_novaria_zona', true ),
+			'prop'     => (object) (array) get_post_meta( $id, '_novaria_prop', true ),
+			'est'      => (object) (array) get_post_meta( $id, '_novaria_est', true ),
+			'contact'  => array(
+				'nume'     => (string) get_post_meta( $id, '_novaria_nume', true ),
+				'telefon'  => (string) get_post_meta( $id, '_novaria_telefon', true ),
+				'email'    => (string) get_post_meta( $id, '_novaria_email', true ),
+				'timeline' => (string) get_post_meta( $id, '_novaria_timeline', true ),
+				'mesaj'    => (string) get_post_meta( $id, '_novaria_mesaj', true ),
+			),
+			'pagina'   => (string) get_post_meta( $id, '_novaria_pagina', true ),
+			'admin'    => admin_url( 'post.php?post=' . $id . '&action=edit' ),
+		);
+	}
+	foreach ( get_posts( array_merge( $args, array( 'post_type' => 'novaria_eval' ) ) ) as $post ) {
+		$id  = $post->ID;
+		$sid = (string) get_post_meta( $id, '_novaria_sid', true );
+		if ( $sid && isset( $sids[ $sid ] ) ) {
+			continue; // vizitatorul a lăsat și contact: apare o singură dată, ca lead
+		}
+		$out[] = array(
+			'id'       => 'eval-' . $id,
+			'fel'      => 'evaluare',
+			't'        => mysql2date( 'c', $post->post_date_gmt, false ),
+			'tip'      => (string) get_post_meta( $id, '_novaria_tip', true ),
+			'zonaNume' => (string) get_post_meta( $id, '_novaria_zona', true ),
+			'prop'     => (object) (array) get_post_meta( $id, '_novaria_prop', true ),
+			'est'      => (object) (array) get_post_meta( $id, '_novaria_est', true ),
+			'contact'  => null,
+			'pagina'   => (string) get_post_meta( $id, '_novaria_pagina', true ),
+		);
+	}
+	usort( $out, function ( $a, $b ) { return strcmp( $b['t'], $a['t'] ); } );
+	$out = array_slice( $out, 0, $limit );
+	$r   = new WP_REST_Response( array( 'ok' => true, 'n' => count( $out ), 'generat' => gmdate( 'c' ), 'items' => $out ), 200 );
+	$r->header( 'Cache-Control', 'no-store' );
+	return $r;
 }
 
 function novaria_ev_rest_data() {
@@ -402,6 +634,9 @@ function novaria_ev_handle_lead( $p ) {
 	update_post_meta( $post_id, '_novaria_pagina', $pagina );
 	update_post_meta( $post_id, '_novaria_acord', array( 'v' => NOVARIA_EV_CONSENT_VER, 't' => current_time( 'mysql' ) ) );
 	update_post_meta( $post_id, '_novaria_data_ver', isset( $p['dateVer'] ) ? sanitize_text_field( substr( (string) $p['dateVer'], 0, 40 ) ) : '' );
+	if ( ! empty( $p['sid'] ) ) {
+		update_post_meta( $post_id, '_novaria_sid', preg_replace( '/[^a-zA-Z0-9_-]/', '', substr( (string) $p['sid'], 0, 40 ) ) );
+	}
 
 	set_transient( $k, $n + 1, HOUR_IN_SECONDS );
 	set_transient( $gk, $gn + 1, HOUR_IN_SECONDS );
@@ -664,6 +899,7 @@ function novaria_ev_settings_page() {
 				<tr><th scope="row"><label for="nv-ret">Păstrează lead-urile (luni)</label></th><td><input id="nv-ret" type="number" min="0" max="120" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[retention_m]" value="<?php echo $f( 'retention_m' ); // phpcs:ignore ?>"> <span class="description">Lead-urile mai vechi se șterg automat. 0 = nu se șterg.</span></td></tr>
 				<tr><th scope="row"><label for="nv-c1">Culoare principală</label></th><td><input id="nv-c1" type="text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[color_main]" value="<?php echo $f( 'color_main' ); // phpcs:ignore ?>"> <label for="nv-c2" style="margin-left:12px">Accent</label> <input id="nv-c2" type="text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[color_accent]" value="<?php echo $f( 'color_accent' ); // phpcs:ignore ?>"></td></tr>
 				<tr><th scope="row"><label for="nv-url">Adresa datelor</label></th><td><input id="nv-url" type="url" class="large-text code" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[data_url]" value="<?php echo $f( 'data_url' ); // phpcs:ignore ?>"><p class="description">Fișierul actualizat zilnic de Novaria. Nu-l schimba decât dacă muți depozitul.</p></td></tr>
+				<tr><th scope="row">Cheia pentru aplicația internă</th><td><code><?php echo esc_html( novaria_ev_api_key() ); ?></code><p class="description">Se pune în aplicația Novaria Evaluator (Setări → „Evaluările de pe site”), ca să vadă acolo cererile și evaluările făcute de vizitatori. Nu o publica.</p></td></tr>
 				<tr><th scope="row"><label for="nv-ch">Verifică datele la fiecare (ore)</label></th><td><input id="nv-ch" type="number" min="1" max="48" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[cache_hours]" value="<?php echo $f( 'cache_hours' ); // phpcs:ignore ?>"></td></tr>
 			</table>
 			<?php submit_button( 'Salvează' ); ?>
@@ -691,6 +927,7 @@ function novaria_ev_activate() {
 	if ( false === get_option( NOVARIA_EV_OPT, false ) ) {
 		add_option( NOVARIA_EV_OPT, novaria_ev_defaults() );
 	}
+	novaria_ev_api_key();
 }
 register_deactivation_hook( __FILE__, 'novaria_ev_deactivate' );
 function novaria_ev_deactivate() {
@@ -699,6 +936,19 @@ function novaria_ev_deactivate() {
 
 add_action( 'novaria_ev_daily', 'novaria_ev_cleanup' );
 function novaria_ev_cleanup() {
+	// evaluările anonime se păstrează 6 luni
+	$olde = get_posts(
+		array(
+			'post_type'      => 'novaria_eval',
+			'post_status'    => 'any',
+			'posts_per_page' => 300,
+			'fields'         => 'ids',
+			'date_query'     => array( array( 'before' => gmdate( 'Y-m-d', strtotime( '-6 months' ) ) ) ),
+		)
+	);
+	foreach ( $olde as $id ) {
+		wp_delete_post( $id, true );
+	}
 	$m = (int) novaria_ev_opts()['retention_m'];
 	if ( $m <= 0 ) {
 		return;

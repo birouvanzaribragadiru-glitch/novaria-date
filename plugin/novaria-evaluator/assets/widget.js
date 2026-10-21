@@ -23,6 +23,19 @@
   function num(v) { return E.num(v); }
   function anunturi(n) { n = Math.round(n); return n === 1 ? 'un anunț' : deN(n, 'anunțuri'); }
   function dkm(a, b) { var dx = (a[0] - b[0]) * 79.4, dy = (a[1] - b[1]) * 111.2; return Math.sqrt(dx * dx + dy * dy); }
+  // id de sesiune pentru evaluările anonime (fără date personale): aceeași vizită → aceeași înregistrare pe site
+  function sid() { try { var k = 'nvev-sid', v = sessionStorage.getItem(k); if (!v) { v = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); sessionStorage.setItem(k, v); } return v; } catch (e) { return S.sidMem || (S.sidMem = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)); } }
+  function evalPayload() {
+    var x = S.res, z = x && x.z, P = x && x.r.prices; if (!x) return null;
+    return { sid: sid(), pagina: location.href.split('#')[0], zonaNume: z ? z.nume : '', proprietate: x.s, estimare: { min: x.min, max: x.max, realist: P.realist, rapid: P.quick, listare: P.list, ppm: Math.round(x.ppm) } };
+  }
+  // trimite evaluarea (fără contact) la câteva secunde după ultima schimbare, și la părăsirea paginii
+  function logEval(now) {
+    if (!CFG.evalUrl) return;
+    clearTimeout(S.logT);
+    var send = function () { var p = evalPayload(); if (!p) return; var body = JSON.stringify(p); if (S.lastLog === body) return; S.lastLog = body; try { fetch(CFG.evalUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, credentials: 'omit', keepalive: true }).catch(function () { }); } catch (e) { } };
+    if (now) send(); else S.logT = setTimeout(send, 4000);
+  }
   function track(name, params) { try { if (typeof window.gtag === 'function') window.gtag('event', name, params || {}); else if (Array.isArray(window.dataLayer)) window.dataLayer.push(Object.assign({ event: name }, params || {})); } catch (e) { } }
   var MONTHS = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
   function dateRo(iso) { var d = new Date(iso); return isFinite(d) ? d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() : ''; }
@@ -278,6 +291,7 @@
     S.res = x;
     if (!x) { box.hidden = true; return; }
     box.hidden = false;
+    logEval(false);
     var lead = '';
     if (!S.unlocked) {
       lead = '<div class="nvev-gate"><h4>Primește raportul detaliat, gratuit</h4>' +
@@ -371,7 +385,7 @@
     if (firstBad) { firstBad.focus(); return; }
     var x = S.res, z = x && x.z, P = x && x.r.prices;
     var payload = {
-      telefon: tel, nume: form.nume.value.trim(), email: form.email.value.trim(), timeline: form.timeline.value, acord: true, website: form.website.value,
+      telefon: tel, nume: form.nume.value.trim(), email: form.email.value.trim(), timeline: form.timeline.value, acord: true, website: form.website.value, sid: sid(),
       t: Date.now() - shownAt, pagina: location.href.split('#')[0], dateVer: S.data && S.data.actualizat,
       zonaNume: z ? z.nume : '', proprietate: x ? x.s : { tip: S.tip },
       estimare: x ? { min: x.min, max: x.max, realist: P.realist, rapid: P.quick, listare: P.list, ppm: Math.round(x.ppm) } : {}
@@ -449,6 +463,8 @@
     root.innerHTML = '<div class="nvev-card"><form class="nvev-form" novalidate></form><div class="nvev-result" aria-live="polite" hidden></div></div>';
     renderForm(); bind();
   }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') logEval(true); });
+  window.addEventListener('pagehide', function () { logEval(true); });
   loadData().then(function (d) { setData(d); start(); }, function () {
     root.innerHTML = '<div class="nvev-card"><p class="nvev-fail">Evaluatorul nu s-a putut încărca acum. ' + contactLine('Ne poți contacta direct:') + '</p></div>';
   });
