@@ -335,8 +335,10 @@ for mid, m in sorted(messages.items(), key=lambda kv: ms_of(kv[1])):
         mh = re.match(r'\s*(\d+)\s+anun', m.get('subject') or '')
         if mh and int(mh.group(1)) > len(got): HIDDEN['imobiliare'] += int(mh.group(1)) - len(got); HIDDEN['emailuri_cu_ascunse'] += 1
     t = ms_of(m)
+    gars = bool(re.search(r'garsonier', norm(m.get('subject') or '')))
     for a in got:
         a['venitLa'] = t; a['msg'] = mid
+        if gars and a.get('tip') == 'apartament' and not a.get('camere'): a['camere'] = 1
         a['zona'] = map_zone(a.get('loc') or '') or zone_from_title(a.get('titlu') or '', a.get('loc') or '')
     per_msg[mid] = len(got)
     listings.extend(got)
