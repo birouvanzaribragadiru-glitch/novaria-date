@@ -132,7 +132,14 @@ for k, d in docs_of(SRC, 'setari').items():
     if isinstance(d2.get('overrides'), dict): d2['overrides'] = {z: v for z, v in d2['overrides'].items() if zona_ok(z)}
     emit('setari', k, d2)
 
-batches = [writes[i:i + 50] for i in range(0, len(writes), 50)]
+# loturi de cel mult 50 de scrieri ȘI cel mult ~850 KB (limita bazei e 1 MiB pe cerere; documentele piata sunt mari)
+MAX_B, MAX_N = 850 * 1024, 50
+batches, cur, cur_b = [], [], 0
+for w in writes:
+    b = os.path.getsize(w['file_path']) + 200
+    if cur and (len(cur) >= MAX_N or cur_b + b > MAX_B): batches.append(cur); cur, cur_b = [], 0
+    cur.append(w); cur_b += b
+if cur: batches.append(cur)
 with open(os.path.join(OUT, 'writes.json'), 'w', encoding='utf-8') as f: json.dump(batches, f, ensure_ascii=False, indent=1)
 print('Zone rezervate (excluse):', len(REZ), sorted(REZ))
 print('Documente de scris:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(OUT, 'writes.json'))
