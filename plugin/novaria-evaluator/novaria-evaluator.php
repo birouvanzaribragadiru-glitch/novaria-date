@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.4.1
+ * Version:           1.5.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.4.1' );
+define( 'NOVARIA_EV_VER', '1.5.0' );
+require_once __DIR__ . '/includes/raport.php';
+require_once __DIR__ . '/includes/urmarire.php';
 define( 'NOVARIA_EV_KEY_OPT', 'novaria_ev_api_key' );   // cheia cu care aplicația internă Novaria citește evaluările de pe site
 define( 'NOVARIA_EV_FILE', __FILE__ );
 define( 'NOVARIA_EV_DIR', plugin_dir_path( __FILE__ ) );
@@ -41,6 +43,10 @@ function novaria_ev_defaults() {
 		'color_main'    => '#13233F',
 		'color_accent'  => '#A07B2C',
 		'email_client'  => 1,
+		'urmarire'      => 1,
+		'raport_zone'   => 'bragadiru,domnesti,drumul-taberei,rahova,militari,popesti-leordeni',
+		'raport_auto'   => 0,
+		'raport_cta_url' => home_url( '/evaluare-gratuita/' ),
 	);
 }
 
@@ -643,6 +649,7 @@ function novaria_ev_handle_lead( $p ) {
 
 	novaria_ev_mail_lead( $post_id );
 	novaria_ev_mail_client( $post_id );
+	novaria_ev_urmarire_programeaza( $post_id );
 	return array( 'code' => 200, 'body' => array( 'ok' => true ) );
 }
 
@@ -668,7 +675,7 @@ function novaria_ev_lead_lines( $post_id ) {
 		$L[] = 'Vrea să vândă: ' . $tl;
 	}
 	$L[] = '';
-	$L[] = 'Proprietatea: ' . get_the_title( $post_id );
+	$L[] = 'Proprietatea: ' . get_post_field( 'post_title', $post_id );
 	$labels = array(
 		'strada' => 'Strada', 'ansamblu' => 'Ansamblu rezidențial', 'microPct' => 'Strada / ansamblul față de media zonei (%)', 'mpBalcon' => 'Balcon / terasă (mp)',
 		'camere' => 'Camere', 'an' => 'An construcție', 'etaj' => 'Etaj', 'etajeTotal' => 'Din etaje', 'stare' => 'Stare',
@@ -741,7 +748,7 @@ function novaria_ev_mail_client( $post_id ) {
 	}
 	$nm  = get_post_meta( $post_id, '_novaria_nume', true );
 	$zn  = get_post_meta( $post_id, '_novaria_zona', true );
-	$ttl = get_the_title( $post_id );
+	$ttl = get_post_field( 'post_title', $post_id );
 	$ttl = preg_replace( '/\s+—\s+.*$/u', '', $ttl );
 	$L   = array();
 	$L[] = 'Bună' . ( $nm ? ', ' . $nm : '' ) . ',';
@@ -852,6 +859,10 @@ function novaria_ev_sanitize_opts( $in ) {
 	$out['color_main']   = isset( $in['color_main'] ) ? novaria_ev_hex( $in['color_main'], $d['color_main'] ) : $d['color_main'];
 	$out['color_accent'] = isset( $in['color_accent'] ) ? novaria_ev_hex( $in['color_accent'], $d['color_accent'] ) : $d['color_accent'];
 	$out['email_client'] = empty( $in['email_client'] ) ? 0 : 1;
+	$out['urmarire']     = empty( $in['urmarire'] ) ? 0 : 1;
+	$out['raport_auto']  = empty( $in['raport_auto'] ) ? 0 : 1;
+	$out['raport_zone']  = isset( $in['raport_zone'] ) ? implode( ',', array_filter( array_map( 'sanitize_title', explode( ',', (string) $in['raport_zone'] ) ) ) ) : $d['raport_zone'];
+	$out['raport_cta_url'] = isset( $in['raport_cta_url'] ) ? esc_url_raw( $in['raport_cta_url'] ) : $d['raport_cta_url'];
 	delete_transient( NOVARIA_EV_DATA_TRANSIENT );
 	return $out;
 }
@@ -888,6 +899,9 @@ function novaria_ev_settings_page() {
 			<?php endif; ?>
 		</p>
 		<form method="post"><?php wp_nonce_field( 'novaria_ev_refresh' ); ?><button class="button" name="novaria_ev_refresh" value="1">Actualizează datele acum</button></form>
+		<h2>Ultimele 30 de zile</h2>
+		<?php $cv = novaria_ev_conversie( 30 ); ?>
+		<p><b><?php echo (int) $cv['evaluari']; ?></b> evaluări făcute de vizitatori · <b><?php echo (int) $cv['leaduri']; ?></b> cereri cu contact<?php if ( $cv['evaluari'] ) : ?> (<?php echo esc_html( number_format_i18n( 100 * $cv['leaduri'] / max( 1, $cv['evaluari'] ), 0 ) ); ?>% conversie)<?php endif; ?> · <b><?php echo (int) $cv['emailuri']; ?></b> cu email (intră în urmărirea la 30/60/90 de zile) · <b><?php echo (int) $cv['urmariri']; ?></b> mesaje de urmărire trimise.</p>
 		<h2>Setări</h2>
 		<form method="post" action="options.php">
 			<?php settings_fields( 'novaria_ev' ); ?>
@@ -901,6 +915,9 @@ function novaria_ev_settings_page() {
 				<tr><th scope="row"><label for="nv-c1">Culoare principală</label></th><td><input id="nv-c1" type="text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[color_main]" value="<?php echo $f( 'color_main' ); // phpcs:ignore ?>"> <label for="nv-c2" style="margin-left:12px">Accent</label> <input id="nv-c2" type="text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[color_accent]" value="<?php echo $f( 'color_accent' ); // phpcs:ignore ?>"></td></tr>
 				<tr><th scope="row"><label for="nv-url">Adresa datelor</label></th><td><input id="nv-url" type="url" class="large-text code" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[data_url]" value="<?php echo $f( 'data_url' ); // phpcs:ignore ?>"><p class="description">Fișierul actualizat zilnic de Novaria. Nu-l schimba decât dacă muți depozitul.</p></td></tr>
 				<tr><th scope="row">Cheia pentru aplicația internă</th><td><code><?php echo esc_html( novaria_ev_api_key() ); ?></code><p class="description">Se pune în aplicația Novaria Evaluator (Setări → „Evaluările de pe site”), ca să vadă acolo cererile și evaluările făcute de vizitatori. Nu o publica.</p></td></tr>
+				<tr><th scope="row">Urmărire după evaluare</th><td><label><input type="checkbox" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[urmarire]" value="1" <?php checked( ! empty( $o['urmarire'] ) ); ?>> La 30, 60 și 90 de zile după o cerere cu email, vizitatorul primește „ce s-a schimbat în zona ta” (prețul median acum față de atunci, anunțuri noi, estimarea actualizată) și invitația la evaluarea completă. Fiecare mesaj are link de dezabonare.</label></td></tr>
+				<tr><th scope="row"><label for="nv-rz">Rapoarte lunare de piață</label></th><td><input id="nv-rz" type="text" class="large-text code" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[raport_zone]" value="<?php echo $f( 'raport_zone' ); // phpcs:ignore ?>"><p class="description">Id-urile zonelor, separate cu virgulă (ex. bragadiru, domnesti, drumul-taberei). În prima zi a fiecărei luni se creează câte un articol „Piața imobiliară în …” pentru fiecare zonă, în categoria „Piața imobiliară”, cu shortcode-ul <code>[novaria_raport zona="…"]</code> (poți pune shortcode-ul și singur, pe orice pagină). Lasă gol ca să oprești.</p><label><input type="checkbox" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[raport_auto]" value="1" <?php checked( ! empty( $o['raport_auto'] ) ); ?>> Publică articolele automat (altfel rămân ciorne și primești email să le publici)</label></td></tr>
+				<tr><th scope="row"><label for="nv-cta">Pagina evaluatorului (butonul din rapoarte)</label></th><td><input id="nv-cta" type="url" class="regular-text" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[raport_cta_url]" value="<?php echo $f( 'raport_cta_url' ); // phpcs:ignore ?>"></td></tr>
 				<tr><th scope="row"><label for="nv-ch">Verifică datele la fiecare (ore)</label></th><td><input id="nv-ch" type="number" min="1" max="48" name="<?php echo esc_attr( NOVARIA_EV_OPT ); ?>[cache_hours]" value="<?php echo $f( 'cache_hours' ); // phpcs:ignore ?>"></td></tr>
 			</table>
 			<?php submit_button( 'Salvează' ); ?>
@@ -966,6 +983,23 @@ function novaria_ev_cleanup() {
 	foreach ( $old as $id ) {
 		wp_delete_post( $id, true );
 	}
+}
+
+/** Evaluările, cererile și mesajele de urmărire din ultimele N zile (pentru pagina de setări). */
+function novaria_ev_conversie( $zile ) {
+	$after = gmdate( 'Y-m-d H:i:s', time() - $zile * DAY_IN_SECONDS );
+	$q = function ( $type ) use ( $after ) {
+		return (int) ( new WP_Query( array( 'post_type' => $type, 'post_status' => 'any', 'posts_per_page' => 1, 'fields' => 'ids', 'date_query' => array( array( 'after' => $after ) ), 'no_found_rows' => false ) ) )->found_posts;
+	};
+	$ev = $q( 'novaria_eval' );
+	$ld = $q( 'novaria_lead' );
+	$em = (int) ( new WP_Query( array( 'post_type' => 'novaria_lead', 'post_status' => 'any', 'posts_per_page' => 1, 'fields' => 'ids', 'date_query' => array( array( 'after' => $after ) ), 'meta_query' => array( array( 'key' => '_novaria_email', 'value' => '@', 'compare' => 'LIKE' ) ), 'no_found_rows' => false ) ) )->found_posts;
+	$ur = 0;
+	foreach ( array( 30, 60, 90 ) as $z ) {
+		$ur += (int) ( new WP_Query( array( 'post_type' => 'novaria_lead', 'post_status' => 'any', 'posts_per_page' => 1, 'fields' => 'ids', 'meta_query' => array( array( 'key' => '_novaria_urmarire_' . $z, 'value' => $after, 'compare' => '>=' ) ), 'no_found_rows' => false ) ) )->found_posts;
+	}
+	// evaluările anonime includ și sesiunile care au devenit cereri (același vizitator): le numărăm o dată
+	return array( 'evaluari' => $ev + $ld, 'leaduri' => $ld, 'emailuri' => $em, 'urmariri' => $ur );
 }
 
 function novaria_ev_leads_by_email( $email ) {

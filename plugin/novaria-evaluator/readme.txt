@@ -4,7 +4,7 @@ Tags: imobiliare, evaluare, real estate, valuation
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 License: GPLv2 or later
 
 Evaluator online pentru apartamente, case și terenuri din București și Ilfov, cu date de piață actualizate zilnic.
@@ -27,6 +27,12 @@ Setări → Novaria Evaluator: emailul pentru lead-uri, telefonul și WhatsApp-u
 Se salvează doar ce completează vizitatorul (telefon, opțional nume și email), datele proprietății și estimarea afișată, plus momentul acordului. Evaluările făcute fără să se lase un contact se păstrează 6 luni, doar cu datele proprietății și estimarea (fără nume, telefon sau email). Lead-urile mai vechi decât perioada aleasă în setări se șterg automat. Plugin-ul se leagă de instrumentele WordPress de export și ștergere a datelor personale (Unelte → Exportă / Șterge date personale).
 
 == Changelog ==
+
+= 1.5.0 =
+* Raport lunar de piață pe zonă: shortcode `[novaria_raport zona="bragadiru"]` (preț median, evoluție, anunțuri noi/ieșite, preț redus, pondere proprietari) și articol creat automat în prima zi a lunii pentru zonele alese (ciornă sau publicat automat).
+* Urmărire după evaluare: la 30, 60 și 90 de zile, cine a lăsat emailul primește ce s-a schimbat în zona lui și estimarea actualizată, cu dezabonare dintr-un clic.
+* Negocierea măsurată din vânzările reale (din aplicația internă) intră în calcul când sunt destule vânzări.
+* Pagina de setări arată evaluările, cererile și conversia din ultimele 30 de zile.
 
 = 1.4.1 =
 * Motor nou, identic cu cel din aplicația internă: băi, lift, acoperiș (ultimul etaj), material, orientare, certificat energetic, vedere, stadiu, mobilat, boxă — toate opționale, în „Mai multe detalii”.

@@ -47,6 +47,8 @@ function readCaptures() {
 const src = { piata: readColl('piata'), agentii: readColl('agentii'), portaluri: readColl('portaluri'), lipite: readCaptures() };
 const ref = readColl('referinte').imo360 || null;
 const setari = readColl('setari').general || {};
+const istoric = readColl('istoric');                 // istoricul săptămânal pe zone (colectarea de luni): dinamica pieței
+const tranzactii = readColl('tranzactii');           // vânzările reale (registrul din aplicație): doar cifre agregate ies de aici
 const now = Date.now();
 
 const R = NV_MARKET.compute(src, Z.zone, ref, Z.imoBase, setari.overrides || null, now);
@@ -56,13 +58,24 @@ const params = {};
 if (setari.params && typeof setari.params === 'object') for (const k of Object.keys(setari.params)) { const v = setari.params[k]; if (typeof v === 'number' || typeof v === 'boolean') params[k] = v; }
 if (setari.tune && typeof setari.tune === 'object') { params.tune = {}; for (const k of Object.keys(setari.tune)) if (typeof setari.tune[k] === 'number') params.tune[k] = setari.tune[k]; }
 const zonesEff = Z.zone.map(z => Object.assign({}, z, R.values[z.id] || {}));
-if (Array.isArray(setari.vanzari) && setari.vanzari.length) {
+// vânzările reale: colecția „tranzactii” + cele vechi din setări (fără dubluri)
+const salesAll = (() => { const out = [], ids = {}; for (const k of Object.keys(tranzactii)) { const v = tranzactii[k]; if (v && v.id) { out.push(v); ids[v.id] = 1; } } for (const v of (Array.isArray(setari.vanzari) ? setari.vanzari : [])) if (v && v.id && !ids[v.id]) out.push(v); return out; })();
+if (salesAll.length) {
   try {
-    const sales = setari.vanzari.map(v => Object.assign({}, v));
+    const sales = salesAll.map(v => Object.assign({}, v));
     const c = CMA.calibrate(sales, zonesEff, {}, params, new Date(now));
     const pick = x => x ? { f: Math.round(x.f * 10000) / 10000, n: x.n } : null;
     params.calib = { buc: pick(c.buc), ilf: pick(c.ilf), all: pick(c.all) };
   } catch (e) { console.error('calibrare ignorată:', e.message); }
+  // negocierea măsurată (preț final / preț de listare), pe tip: intră în evaluatorul de pe site în locul marjei implicite de la 16 vânzări
+  const med = xs => { const a = xs.slice().sort((x, y) => x - y), n = a.length; return n ? (n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2) : null; };
+  const txd = {};
+  for (const t of ['apartament', 'casa']) {
+    const ds = salesAll.filter(v => (v.tip || 'apartament') === t).map(v => { const p = +v.pret, l = +v.pretListare; return p > 0 && l >= p * 0.7 && l <= p * 1.6 ? 1 - p / l : null; }).filter(x => x != null);
+    if (ds.length >= 8) txd[t] = { d: Math.round(Math.min(0.25, Math.max(0.01, med(ds))) * 1000) / 1000, n: ds.length };
+  }
+  if (Object.keys(txd).length) params.txDisc = txd;
+  console.log('   vânzări reale:', salesAll.length, '· negociere măsurată:', JSON.stringify(txd));
 }
 
 // statistica publică: doar anunțurile de pe portaluri (Publi24, Storia, cele lipite), fără ofertele de dezvoltator,
@@ -128,6 +141,28 @@ if (!fs.existsSync(strFile) || fs.readFileSync(strFile, 'utf8') !== strTxt) { fs
 // Conversia se face aici, o singură dată; evaluatorul de pe site primește mpCuBalcon: false, ca să n-o mai repete.
 const BALC_CONV = params.mpCuBalcon === false ? 1 : 60 / 56;
 params.mpCuBalcon = false;
+// ---- dinamica pieței pe zonă (pentru raportul lunar de pe site): din istoricul săptămânal și din anunțurile capturate ----
+const MS_D = 864e5, cap = src.lipite;
+function sumLast(pts, key, days) { const L = pts[pts.length - 1]; let t = 0, any = false; for (const p of pts) if (p[key] != null && (Date.parse(L.d) - Date.parse(p.d)) / MS_D < days) { t += p[key]; any = true; } return any ? t : null; }
+function dyn(zid, tip) {
+  const o = {}, H = istoric[zid + '__' + tip];
+  if (H && Array.isArray(H.puncte)) {
+    const pts = H.puncte.filter(p => p && p.d).sort((a, b) => (a.d < b.d ? -1 : 1)), L = pts[pts.length - 1];
+    if (L && L.n >= 8) {
+      o.d = L.d; o.n = L.n; if (L.med) o.med = Math.round(L.med); if (L.zile != null) o.zile = Math.round(L.zile);
+      const noi = sumLast(pts, 'noi', 28), ret = sumLast(pts, 'ret', 28); if (noi != null) o.noi = noi; if (ret != null) o.ret = ret;
+      if (L.red != null) o.red = Math.round(100 * L.red / L.n);
+      const pr = L.propCurat != null ? L.propCurat : L.prop; if (pr != null) o.prop = Math.round(100 * pr / L.n);
+      let ref = null; for (let i = pts.length - 1; i >= 0; i--) if ((Date.parse(L.d) - Date.parse(pts[i].d)) / MS_D >= 26 && pts[i].med) { ref = pts[i]; break; }
+      if (ref && L.med) o.t4 = Math.round((L.med / ref.med - 1) * 1000) / 10;
+    }
+  }
+  // anunțurile capturate din alertele portalurilor (ultimele 28 de zile): câte au apărut, câte au prețul redus, câte sunt de la proprietari
+  let n28 = 0, red = 0, prop = 0, tot = 0;
+  for (const id of Object.keys(cap)) { const a = cap[id]; if (!a || a.zona !== zid || a.tip !== tip || !a.pret || !a.mp) continue; tot++; if (a.adaugatLa && now - a.adaugatLa <= 28 * MS_D) n28++; if (a.pretAnterior && a.pretAnterior > a.pret) red++; if (a.vanzator === 'persoana') prop++; }
+  if (tot >= 8) { o.cap = tot; o.capNoi = n28; o.capRed = Math.round(100 * red / tot); o.capProp = Math.round(100 * prop / tot); }
+  return Object.keys(o).length ? o : null;
+}
 const zone = zonesEff.map(z => {
   const st = R.stats[z.id] || {}, o = { id: z.id, nume: z.nume, grup: z.grup, alias: z.alias || [], v: {}, lq: z.lichiditate || 'medie' };
   if (z.sector) o.sector = z.sector; if (z.loc) o.loc = z.loc;
@@ -138,8 +173,11 @@ const zone = zonesEff.map(z => {
   // câte anunțuri au intrat efectiv în valoare (pentru marja de incertitudine afișată)
   const u = {}; for (const t of ['apartament', 'casa', 'teren']) if (st[t] && st[t].folosite) u[t] = Math.round(st[t].folosite);
   if (Object.keys(u).length) o.u = u;
+  const din = {}; for (const t of ['apartament', 'casa']) { const d = dyn(z.id, t); if (d) din[t] = d; }
+  if (Object.keys(din).length) o.din = din;
   return o;
 });
+console.log('   zone cu dinamică (raport lunar):', zone.filter(z => z.din).length);
 
 // factorii de ajustare calibrați din anunțuri (lib/calib.json, scris de scripts/calibrare.js): doar cei aplicați, fără altceva
 let calib = null;
