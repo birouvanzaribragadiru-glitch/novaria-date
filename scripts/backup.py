@@ -16,10 +16,12 @@ if len(key) < 24:
 if not os.path.isdir(src):
     print('REFUZ: nu găsesc folderul cu date', src); sys.exit(1)
 
-files = sorted(glob.glob(os.path.join(src, '*', '*.json')))
+# toate colecțiile, inclusiv subcolecțiile (agenti/<id>/…, app/<id>/chunks): calea relativă se păstrează în arhivă
+files = sorted(glob.glob(os.path.join(src, '**', '*.json'), recursive=True))
 colls = {}
 for f in files:
-    colls[os.path.basename(os.path.dirname(f))] = colls.get(os.path.basename(os.path.dirname(f)), 0) + 1
+    c = os.path.relpath(os.path.dirname(f), src)
+    colls[c] = colls.get(c, 0) + 1
 if len(files) < 50:
     print('REFUZ: prea puține documente în dump (%d); ceva nu s-a citit.' % len(files)); sys.exit(1)
 
