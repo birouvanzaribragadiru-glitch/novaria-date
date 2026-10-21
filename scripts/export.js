@@ -141,6 +141,12 @@ const zone = zonesEff.map(z => {
   return o;
 });
 
+// factorii de ajustare calibrați din anunțuri (lib/calib.json, scris de scripts/calibrare.js): doar cei aplicați, fără altceva
+let calib = null;
+try {
+  const cj = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib/calib.json'), 'utf8'));
+  if (cj && cj.factors && Object.keys(cj.factors).length) calib = { generatLa: cj.generatLa || null, n: cj.n || null, factors: cj.factors };
+} catch (e) { /* fără calibrare */ }
 const out = {
   v: 1,
   actualizat: new Date(now).toISOString(),
@@ -148,6 +154,7 @@ const out = {
   anunturi: R.n,
   imo360: ref ? { luna: ref.luna || null, trendOras: R.trendOras } : null,
   params,
+  calib,
   zone,
   micro,
   ans

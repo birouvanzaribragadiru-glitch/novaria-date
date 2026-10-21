@@ -39,8 +39,17 @@ var CMA = (function () {
     destinatie: [['casa', 'Locuințe individuale', 1.00], ['comercial', 'Comercial / mixt', 1.30], ['colectiv', 'Blocuri (CUT > 1,5)', 1.60]],
     status: [['activ', 'Anunț activ'], ['vandut', 'Vândut (preț real)'], ['retras', 'Expirat / retras']],
     sursa: [['imobiliare', 'Imobiliare.ro'], ['storia', 'Storia'], ['olx', 'OLX'], ['publi24', 'Publi24'], ['tranzactie', 'Tranzacție proprie'], ['altul', 'Altă sursă'], ['exemplu', 'Exemplu']],
-    locRel: [[-2, 'Mult mai slabă'], [-1, 'Puțin mai slabă'], [0, 'Similară'], [1, 'Puțin mai bună'], [2, 'Mult mai bună']]
+    locRel: [[-2, 'Mult mai slabă'], [-1, 'Puțin mai slabă'], [0, 'Similară'], [1, 'Puțin mai bună'], [2, 'Mult mai bună']],
+    // câmpuri noi (din experiență, necalibrate până nu le confirmă anunțurile — vezi calib.json)
+    material: [['caramida', 'Cărămidă', 1.03], ['beton', 'Cadre / diafragme de beton', 1.00], ['panou', 'Panouri prefabricate', 0.98], ['bca', 'BCA / zidărie ușoară', 0.995]],
+    acoperis: [['etajTehnic', 'Etaj tehnic deasupra', 1.00], ['sarpanta', 'Șarpantă / pod', 0.99], ['terasa', 'Terasă (acoperiș plat)', 0.96]],
+    cert: [['A', 'A', 1.02], ['B', 'B', 1.01], ['C', 'C', 1.00], ['D', 'D', 0.995], ['E', 'E', 0.99], ['F', 'F sau G', 0.98]],
+    stadiu: [['finalizat', 'Finalizat / recepționat', 1.00], ['constructie', 'În construcție (predare viitoare)', 0.95]],
+    orientare: [['S', 'Sud', 1.01], ['SE', 'Sud-est', 1.01], ['SV', 'Sud-vest', 1.005], ['E', 'Est', 1.00], ['V', 'Vest', 1.00], ['NE', 'Nord-est', 0.99], ['NV', 'Nord-vest', 0.99], ['N', 'Nord', 0.985]],
+    bai: [['1', 'O baie', 1.00], ['2', 'Două băi', 1.03], ['3', 'Trei sau mai multe', 1.04]],
+    tva: [['', 'Nu se aplică / inclus'], ['inclus', 'TVA inclus'], ['plus', 'Prețul e fără TVA (+21%)']]
   };
+  var TVA_NOU = 1.21;   // TVA la locuințe noi (din august 2025 cota standard)
   function optMap(list) { var m = {}; list.forEach(function (o) { m[o[0]] = o; }); return m; }
   var M = {}; Object.keys(OPT).forEach(function (k) { M[k] = optMap(OPT[k]); });
 
@@ -48,12 +57,19 @@ var CMA = (function () {
   var TUNE_DEFAULT = {
     'floor.parterVechi': 0.93, 'floor.parterNou': 0.96, 'floor.ultimVechi': 0.95, 'floor.ultimNou': 0.99, 'floor.penthouse': 1.06,
     'floor.faraLift4': 0.93, 'floor.faraLift3': 0.98, 'floor.demisol': 0.82, 'floor.mansarda': 0.92,
+    'floor.ultimTerasaVechi': 0.93, 'floor.ultimTerasaNou': 0.975, 'floor.ultimSarpantaVechi': 0.975, 'floor.ultimSarpantaNou': 0.995, 'floor.ultimTehnic': 0.99,
+    'bai.doua3cam': 1.03, 'bai.una4cam': 0.96,
     'misc.mobilat': 1.01, 'misc.anvelopat': 1.02,
     'park.extBuc': 4000, 'park.subBuc': 10000, 'park.garajBuc': 8000, 'park.extIlf': 2000, 'park.subIlf': 5000, 'park.garajIlf': 4000, 'park.boxa': 1500, 'casa.garaj': 5000
   };
-  var CUR = {};
-  function T(id) { return CUR[id] != null ? CUR[id] : TUNE_DEFAULT[id]; }
-  function fac(list, key, dflt) { var c = CUR[list + '.' + key]; if (c != null) return c; var o = M[list][key]; return o ? o[2] : (dflt == null ? 1 : dflt); }
+  var CUR = {}, CAL = {}, CAL_META = null;
+  // ordinea: factorul pus de utilizator (Setări) > factorul calibrat din anunțuri (calib.json) > valoarea din experiență
+  function T(id) { return CUR[id] != null ? CUR[id] : CAL[id] != null ? CAL[id] : TUNE_DEFAULT[id]; }
+  function fac(list, key, dflt) { var c = CUR[list + '.' + key]; if (c != null) return c; var k = CAL[list + '.' + key]; if (k != null) return k; var o = M[list][key]; return o ? o[2] : (dflt == null ? 1 : dflt); }
+  function setCalib(obj) { CAL = (obj && obj.factors) || {}; CAL_META = obj || null; }
+  function calibFactor(id) { return CAL[id] != null ? CAL[id] : null; }
+  function calibInfo() { return CAL_META; }
+  function baseFactor(id) { if (TUNE_DEFAULT[id] != null) return TUNE_DEFAULT[id]; var p = id.split('.'); var o = M[p[0]] && M[p[0]][p[1]]; return o && o[2] != null ? o[2] : null; }
   function lbl(list, key) { var o = M[list][key]; return o ? o[1] : ''; }
 
   var DEFAULT_PARAMS = {
@@ -118,7 +134,13 @@ var CMA = (function () {
     if (e === -1) return T('floor.demisol');
     if (e === 0) return nou ? T('floor.parterNou') : T('floor.parterVechi');
     var f = 1.0;
-    if (tot != null && e >= tot && tot >= 3) f = p.penthouse ? T('floor.penthouse') : (nou ? T('floor.ultimNou') : T('floor.ultimVechi'));
+    if (tot != null && e >= tot && tot >= 3) {
+      if (p.penthouse) f = T('floor.penthouse');
+      else if (p.acoperis === 'terasa') f = nou ? T('floor.ultimTerasaNou') : T('floor.ultimTerasaVechi');
+      else if (p.acoperis === 'sarpanta') f = nou ? T('floor.ultimSarpantaNou') : T('floor.ultimSarpantaVechi');
+      else if (p.acoperis === 'etajTehnic') f = T('floor.ultimTehnic');
+      else f = nou ? T('floor.ultimNou') : T('floor.ultimVechi');
+    }
     if (!lift) { if (e >= 4) f *= T('floor.faraLift4'); else if (e === 3) f *= T('floor.faraLift3'); }
     return f;
   }
@@ -126,8 +148,20 @@ var CMA = (function () {
     var e = parseEtaj(p.etaj); if (e == null) return 'etaj necunoscut';
     var t = num(p.etajeTotal);
     var s = e === -1 ? 'demisol' : e === 0 ? 'parter' : e === 'M' ? 'mansardă' : 'etaj ' + e;
-    return t ? s + '/' + t : s;
+    var r = t && typeof e === 'number' && e >= t && t >= 3 && known(p.acoperis) ? ' (' + lbl('acoperis', p.acoperis).toLowerCase() + ')' : '';
+    return (t ? s + '/' + t : s) + r;
   }
+  // băi: ce e obișnuit depinde de numărul de camere (1 baie până la 3 camere, 2 băi de la 4)
+  function baiFactor(camere, bai) {
+    var b = num(bai), c = num(camere); if (b == null) return null; b = Math.max(1, Math.min(3, Math.round(b)));
+    if (c != null && c >= 4) return b === 1 ? T('bai.una4cam') : b >= 3 ? fac('bai', '3') / fac('bai', '2') : 1.0;
+    if (c != null && c <= 1) return 1.0;
+    if (c === 2) return b >= 2 ? 1 + (fac('bai', '2') - 1) * 0.6 : 1.0;
+    return b >= 2 ? (b >= 3 ? fac('bai', '3') : T('bai.doua3cam')) : 1.0;
+  }
+  // materialul blocului contează la blocurile vechi; la cele noi (cadre de beton + zidărie) diferențele sunt mici
+  function materialFactor(material, an) { if (!known(material)) return null; var f = fac('material', material); var t = eraT(an); if (t != null && t >= 0.6) f = 1 + (f - 1) * 0.3; return f; }
+  function certFactor(c) { if (!known(c)) return null; var k = String(c).toUpperCase(); if (k === 'G') k = 'F'; if (k === 'A+' || k === 'A++') k = 'A'; return M.cert[k] ? fac('cert', k) : null; }
   function sizeFactor(mp, ref, el) { mp = num(mp); if (!mp) return 1; return Math.pow(mp / ref, el == null ? -0.10 : el); }
 
   function zoneById(zones, id) { for (var i = 0; i < zones.length; i++) if (zones[i].id === id) return zones[i]; return null; }
@@ -186,6 +220,11 @@ var CMA = (function () {
       else if (known(s.balcon)) push('balcon', 'Balcon', fac('balcon', s.balcon), lbl('balcon', s.balcon));
       if (s.anvelopat && tt != null && tt <= 0.35) push('anvelopat', 'Bloc reabilitat termic', T('misc.anvelopat'), 'anvelopat');
       if (s.mobilat) push('mobilat', 'Mobilat și utilat', T('misc.mobilat'), 'inclus în preț');
+      push('material', 'Structura blocului', materialFactor(s.material, s.an), lbl('material', s.material));
+      push('bai', 'Băi', baiFactor(s.camere, s.bai), num(s.bai) ? (num(s.bai) >= 3 ? '3+ băi' : num(s.bai) + (num(s.bai) === 1 ? ' baie' : ' băi')) : '');
+      push('cert', 'Certificat energetic', certFactor(s.cert), known(s.cert) ? 'clasa ' + String(s.cert).toUpperCase() : '');
+      if (known(s.orientare)) push('orientare', 'Orientare', fac('orientare', s.orientare), lbl('orientare', s.orientare));
+      if (s.stadiu === 'constructie') push('stadiu', 'Stadiu', fac('stadiu', 'constructie'), 'în construcție: banii stau blocați până la predare');
       push('marime', 'Suprafață', sizeFactor(s.mp, 60), num(s.mp) + ' mp');
       if (num(s.camere) === 1 && num(s.mp) > 42) push('garsonieraMare', 'O cameră pe suprafață mare', 0.96, 'cumpărătorii o compară cu 2 camere');
     } else if (s.tip === 'casa') {
@@ -199,6 +238,9 @@ var CMA = (function () {
       if (s.asfalt === false) push('asfalt', 'Stradă neasfaltată', 0.95, '');
       var fr = num(s.front); if (fr != null) push('front', 'Front stradal', fr < 10 ? 0.95 : fr > 15 ? 1.02 : 1.0, fr + ' m');
       if (s.mobilat) push('mobilat', 'Mobilată', T('misc.mobilat'), '');
+      if (num(s.bai) != null && num(s.camere) != null) push('bai', 'Băi', baiFactor(s.camere, s.bai), num(s.bai) + (num(s.bai) === 1 ? ' baie' : ' băi'));
+      if (s.stadiu === 'constructie') push('stadiu', 'Stadiu', fac('stadiu', 'constructie'), 'în construcție');
+      if (known(s.cert)) push('cert', 'Certificat energetic', certFactor(s.cert), 'clasa ' + String(s.cert).toUpperCase());
       push('marime', 'Suprafață', sizeFactor(s.mp, 130, -0.10), num(s.mp) + ' mp utili');
     } else {
       push('intravilan', 'Încadrare', s.intravilan === false ? 0.25 : 1.0, s.intravilan === false ? 'extravilan' : 'intravilan');
@@ -265,6 +307,8 @@ var CMA = (function () {
     if (Math.round(exC) !== Math.round(exS)) adj.push({ k: 'Parcare / boxă / garaj', v: exS - exC, mode: 'abs', note: 'valoare separată de €/mp' });
     function mul(label, f, note) { checked++; if (f == null) { unknown++; return; } if (Math.abs(f - 1) < 0.0005) return; ppm *= f; adj.push({ k: label, f: f, mode: 'mul', note: note || '' }); }
 
+    // anunț „fără TVA” (dezvoltatori): cumpărătorul plătește prețul plus TVA → comparăm prețul întreg
+    if (c.tva === 'plus') { ppm *= TVA_NOU; adj.push({ k: 'TVA neinclus în anunț', f: TVA_NOU, mode: 'mul', note: 'prețul cerut e fără TVA (' + Math.round((TVA_NOU - 1) * 100) + '%)' }); }
     var st = c.status || 'activ';
     if (st === 'activ') {
       var stale = (num(c.zile) || 0) > P.staleDays;
@@ -302,12 +346,26 @@ var CMA = (function () {
       // cu balconul în mp: comparabila fără date despre balcon e socotită cu un balcon obișnuit
       if (balcMp(s) != null) { var fbc = balcEff(c); mul('Balcon (' + (balcMp(c) != null ? balcLabel(c).split(',')[0] : known(c.balcon) ? lbl('balcon', c.balcon).toLowerCase() : 'balcon obișnuit') + ' → ' + balcLabel(s).split(',')[0] + ')', balcFactor(s) / (fbc == null ? 1 : fbc)); }
       else if (known(c.balcon) && known(s.balcon)) mul('Balcon', fac('balcon', s.balcon) / fac('balcon', c.balcon));
+      // detalii din textul anunțului (semne) sau completate de agent: se ajustează doar când se știu la amândouă
+      if (known(s.vedere) && known(c.vedere)) mul('Expunere / vedere', fac('vedere', s.vedere) / fac('vedere', c.vedere), lbl('vedere', c.vedere) + ' → ' + lbl('vedere', s.vedere));
+      if (known(s.material)) mul('Structura blocului', known(c.material) ? materialFactor(s.material, s.an) / materialFactor(c.material, known(c.an) ? c.an : s.an) : null, known(c.material) ? lbl('material', c.material) + ' → ' + lbl('material', s.material) : '');
+      if (num(s.bai) != null) { var bS = baiFactor(s.camere, s.bai), bC = num(c.bai) != null ? baiFactor(c.camere || s.camere, c.bai) : null; mul('Băi', (bS != null && bC != null) ? bS / bC : null, bC != null ? num(c.bai) + ' → ' + num(s.bai) : ''); }
+      if (known(s.cert)) mul('Certificat energetic', (certFactor(s.cert) && certFactor(c.cert)) ? certFactor(s.cert) / certFactor(c.cert) : null, known(c.cert) ? String(c.cert).toUpperCase() + ' → ' + String(s.cert).toUpperCase() : '');
+      if (known(s.orientare)) mul('Orientare', known(c.orientare) ? fac('orientare', s.orientare) / fac('orientare', c.orientare) : null, known(c.orientare) ? lbl('orientare', c.orientare) + ' → ' + lbl('orientare', s.orientare) : '');
+      if (ts != null && ts <= 0.35 && (c.anvelopat === true || c.anvelopat === false || c.anvelopat === 'da' || c.anvelopat === 'nu')) { var aS = s.anvelopat ? T('misc.anvelopat') : 1, aC = (c.anvelopat === true || c.anvelopat === 'da') ? T('misc.anvelopat') : 1; mul('Reabilitare termică', aS / aC, aC > 1 ? 'anunțul e reabilitat' : 'anunțul nu e reabilitat'); }
+      if (c.mobilat === true || c.mobilat === 'da') mul('Mobilat', (s.mobilat ? T('misc.mobilat') : 1) / T('misc.mobilat'), 'anunțul e mobilat');
+      if (c.stadiu === 'constructie' || s.stadiu === 'constructie') mul('Stadiu', fac('stadiu', s.stadiu === 'constructie' ? 'constructie' : 'finalizat') / fac('stadiu', c.stadiu === 'constructie' ? 'constructie' : 'finalizat'), c.stadiu === 'constructie' ? 'anunțul e în construcție' : 'proprietatea ta e în construcție');
       mul('Suprafață (' + (mpU < mp ? Math.round(mpU * 10) / 10 + ' utili' : mp) + ' → ' + num(s.mp) + ' mp)', sizeFactor(s.mp, 60) / sizeFactor(mpU, 60));
     } else if (tip === 'casa') {
       var es = eraCasa(s.an), ec = eraCasa(c.an);
       mul('Vechime', (es != null && ec != null) ? es / ec : null, eraLabel(c.an) + ' → ' + eraLabel(s.an));
       if (known(c.tipCasa) && known(s.tipCasa)) mul('Tip casă', fac('tipCasa', s.tipCasa) / fac('tipCasa', c.tipCasa));
       if (known(c.structura) && known(s.structura)) mul('Structură', fac('structura', s.structura) / fac('structura', c.structura));
+      if (known(c.regim) && known(s.regim)) mul('Regim de înălțime', fac('regim', s.regim) / fac('regim', c.regim), lbl('regim', c.regim) + ' → ' + lbl('regim', s.regim));
+      if (c.stadiu === 'constructie' || s.stadiu === 'constructie') mul('Stadiu', fac('stadiu', s.stadiu === 'constructie' ? 'constructie' : 'finalizat') / fac('stadiu', c.stadiu === 'constructie' ? 'constructie' : 'finalizat'), c.stadiu === 'constructie' ? 'anunțul e în construcție' : 'proprietatea ta e în construcție');
+      if (c.utilCanal === false || c.utilCanal === true) { if (s.utilCanal === false || s.utilCanal === true) mul('Canalizare', (s.utilCanal === false ? 0.96 : 1) / (c.utilCanal === false ? 0.96 : 1)); }
+      if (c.asfalt === false || c.asfalt === true) { if (s.asfalt === false || s.asfalt === true) mul('Stradă asfaltată', (s.asfalt === false ? 0.95 : 1) / (c.asfalt === false ? 0.95 : 1)); }
+      if (c.garaj === true || c.garaj === 'da') { if (!(s.garaj === true || s.garaj === 'da')) { ppm -= T('casa.garaj') / mp; adj.push({ k: 'Garajul din anunț', v: -T('casa.garaj'), mode: 'abs', note: 'proprietatea ta nu are garaj' }); } }
       mul('Suprafață (' + mp + ' → ' + num(s.mp) + ' mp)', sizeFactor(s.mp, 130, -0.10) / sizeFactor(mp, 130, -0.10));
       var tS = num(s.teren), tC = num(c.teren), lp = (z && z.teren) || 0;
       checked++;
@@ -330,13 +388,13 @@ var CMA = (function () {
 
     var gross = 0;
     adj.forEach(function (a) {
-      if (/^(Negociere|Anunț expirat|Evoluția|Strada|Balconul din suprafața)/.test(a.k)) return;
+      if (/^(Negociere|Anunț expirat|Evoluția|Strada|Balconul din suprafața|TVA neinclus)/.test(a.k)) return;
       if (a.mode === 'mul') gross += Math.abs(Math.log(a.f));
       else if (a.mode === 'add') gross += Math.abs(a.ppmDelta) / ppm0;
       else if (a.mode === 'abs') gross += Math.abs(a.v) / core;
     });
     var completeness = checked ? 1 - unknown / checked : 1;
-    var typeW = st === 'vandut' ? 1.6 : st === 'retras' ? 0.7 : 1.0;
+    var typeW = (st === 'vandut' ? 1.6 : st === 'retras' ? 0.7 : 1.0) * (num(c.locBonus) || 1);   // același bloc / aceeași stradă cântăresc mai mult
     var w = typeW * (0.55 + 0.45 * completeness) / (1 + 10 * gross * gross);
     return { valid: true, ppm0: ppm0, ppm: ppm, net: ppm / ppm0 - 1, gross: gross, adj: adj, w: w, completeness: completeness, unknown: unknown, status: st };
   }
@@ -512,6 +570,70 @@ var CMA = (function () {
     return out;
   }
 
+  // Ce câmpuri lipsesc și cât pot muta prețul (±%), în funcție de ce se știe deja despre proprietate.
+  // Folosit de panoul „Ce mai lipsește” — câmpurile sunt opționale, dar precizia depinde de ele.
+  var IMPACT_LABEL = { zona: 'Zona', mp: 'Suprafața utilă', camere: 'Numărul de camere', an: 'Anul construcției', etaj: 'Etajul', etajeTotal: 'Câte etaje are blocul', stare: 'Starea / finisajele', seismic: 'Încadrarea seismică', lift: 'Lift', acoperis: 'Ce e deasupra ultimului etaj', compart: 'Compartimentarea', incalzire: 'Încălzirea', balcon: 'Balconul (mp)', parcareNr: 'Parcarea', material: 'Structura blocului', bai: 'Numărul de băi', vedere: 'Expunerea / vederea', orientare: 'Orientarea', metrou: 'Distanța la metrou', juridic: 'Situația juridică', cert: 'Certificatul energetic', stadiu: 'Stadiul construcției', adresa: 'Adresa (strada)', anvelopat: 'Reabilitare termică', boxa: 'Boxă', mobilat: 'Mobilat', penthouse: 'Penthouse',
+    teren: 'Suprafața terenului', tipCasa: 'Tipul casei', structura: 'Structura', regim: 'Regimul de înălțime', front: 'Frontul stradal', utilCanal: 'Canalizarea', utilGaz: 'Gazele', asfalt: 'Strada asfaltată', garaj: 'Garaj', acces: 'Accesul', destinatie: 'Potențialul urbanistic (PUZ / CUT)', intravilan: 'Intravilan / extravilan', forma: 'Forma terenului', utilitati: 'Utilitățile la limită' };
+  function missingImpact(s, z) {
+    var out = [], an = num(s.an), tt = eraT(s.an), old = tt != null && tt <= 0.35, nou = tt != null && tt >= 0.6, e = parseEtaj(s.etaj), tot = num(s.etajeTotal), cam = num(s.camere), mp = num(s.mp), ilf = isIlfov(z);
+    function miss(k, pct, why, ess) { if (pct <= 0) return; out.push({ k: k, label: IMPACT_LABEL[k] || k, pct: Math.round(pct * 10) / 10, why: why || '', ess: !!ess }); }
+    function unk(k) { return !known(s[k]); }
+    if (unk('zona')) miss('zona', 100, 'fără zonă nu există preț de referință', true);
+    if (!mp) miss('mp', 100, 'prețul se calculează pe mp', true);
+    if (s.tip === 'apartament') {
+      if (unk('an')) miss('an', 15, 'blocurile noi și cele vechi diferă cu 30–50% la mp');
+      if (!cam) miss('camere', 4, 'alege comparabilele potrivite');
+      if (e == null) miss('etaj', old || tt == null ? 7 : 4, 'parterul și ultimul etaj se vând mai ieftin');
+      else if (tot == null) miss('etajeTotal', 5, 'ca să știu dacă e ultimul etaj și dacă are lift');
+      if (unk('stare')) miss('stare', nou ? 6 : 13, 'de la „de renovat” la „premium” sunt 20–25% diferență');
+      if (an && an <= 1977 && unk('seismic')) miss('seismic', 30, 'bulina roșie scade valoarea cu 25–45%');
+      else if (an && an <= 1990 && unk('seismic')) miss('seismic', 5, 'blocurile din 1978–1990 au uneori expertiză');
+      if (tot != null && tot >= 4 && !nou && unk('lift')) miss('lift', tot >= 5 ? 7 : 3, 'etajele 3–4+ fără lift se vând mai greu');
+      if (typeof e === 'number' && tot && e >= tot && tot >= 3 && unk('acoperis') && !s.penthouse) miss('acoperis', nou ? 2.5 : 6, 'terasă (infiltrații) sau șarpantă / etaj tehnic schimbă mult prețul ultimului etaj');
+      if ((cam == null || cam >= 2) && unk('compart')) miss('compart', 4, 'nedecomandatul se vinde cu 5–7% mai ieftin');
+      if (unk('incalzire')) miss('incalzire', nou ? 1.5 : 3, 'centrală proprie față de termoficare');
+      if (balcMp(s) == null && unk('balcon')) miss('balcon', 3, 'balconul nu e suprafață utilă, dar e în prețul anunțurilor');
+      if (unk('parcareNr')) { var pv = (z && (z.apt_nou || z.apt_vechi) && mp) ? (ilf ? 2000 : 4000) / ((z.apt_nou || z.apt_vechi) * mp) * 100 : 3; miss('parcareNr', Math.min(8, Math.max(1.5, pv)), 'un loc de parcare valorează ' + (ilf ? '2.000–5.000' : '4.000–10.000') + ' €'); }
+      if ((old || tt == null) && unk('material')) miss('material', 3, 'cărămidă față de panouri, la blocurile vechi');
+      if (cam != null && cam >= 3 && num(s.bai) == null) miss('bai', cam >= 4 ? 4 : 3, 'a doua baie contează de la 3 camere în sus');
+      if (unk('vedere')) miss('vedere', 3, 'bulevard zgomotos față de vedere la parc');
+      if (unk('orientare')) miss('orientare', 1.5, 'sud față de nord');
+      if (z && !ilf && !s.metrou) miss('metrou', 4, 'sub 5 minute de metrou aduce +4%');
+      if (!old && unk('cert')) miss('cert', 2, 'clasa A/B față de D–G');
+      if ((nou || tt == null) && an && an >= 2015 && unk('stadiu')) miss('stadiu', 5, 'în construcție se vinde cu discount față de finalizat');
+      if (!String(s.adresa || '').trim()) miss('adresa', 4, 'cu strada știută folosesc anunțurile de pe aceeași stradă / din același bloc');
+      if (old && !s.anvelopat) miss('anvelopat', 2, 'blocul reabilitat termic valorează puțin mai mult');
+    } else if (s.tip === 'casa') {
+      if (num(s.teren) == null) miss('teren', 12, 'terenul e o parte mare din prețul unei case');
+      if (unk('an')) miss('an', 10, 'o casă din 1990 și una din 2020 diferă cu 20–25%');
+      if (unk('stare')) miss('stare', 15, 'la roșu / la gri / finisată');
+      if (unk('tipCasa')) miss('tipCasa', 8, 'individuală față de duplex sau înșiruită');
+      if (unk('structura')) miss('structura', 5, 'cărămidă / BCA / lemn');
+      if (unk('regim')) miss('regim', 3, 'parter, P+1, P+2');
+      if (!cam) miss('camere', 2, '');
+      if (num(s.front) == null) miss('front', 4, 'sub 10 m sau peste 15 m');
+      if (unk('utilCanal')) miss('utilCanal', 4, 'fosa scade prețul cu ~4%');
+      if (unk('utilGaz')) miss('utilGaz', 3, '');
+      if (unk('asfalt')) miss('asfalt', 5, 'drumul neasfaltat scade prețul cu ~5%');
+      if (unk('incalzire')) miss('incalzire', 3, '');
+      if (!String(s.adresa || '').trim()) miss('adresa', 4, 'cu strada știută folosesc anunțurile de pe aceeași stradă');
+      if (an && an >= 2015 && unk('stadiu')) miss('stadiu', 5, 'în construcție se vinde cu discount');
+    } else {
+      if (unk('intravilan')) miss('intravilan', 75, 'extravilanul valorează de 3–4 ori mai puțin', true);
+      if (unk('destinatie')) miss('destinatie', 30, 'PUZ pentru blocuri sau comercial dublează prețul');
+      if (num(s.front) == null) miss('front', 8, 'sub 12 m se construiește greu');
+      if (unk('acces')) miss('acces', 8, 'drum de pământ față de asfalt');
+      var u = ['utilApa', 'utilCanal', 'utilGaz', 'utilCurent'].filter(function (k) { return s[k] === true; }).length;
+      if (!u) miss('utilitati', 6, 'fiecare utilitate la limită aduce ~3%');
+      if (unk('forma')) miss('forma', 8, 'forma neregulată scade prețul cu ~8%');
+      if (!String(s.adresa || '').trim()) miss('adresa', 4, '');
+    }
+    if (unk('juridic')) miss('juridic', 12, 'problemele juridice blochează creditul');
+    out.sort(function (a, b) { return (b.ess ? 1 : 0) - (a.ess ? 1 : 0) || b.pct - a.pct; });
+    var ss = 0; out.forEach(function (m) { if (!m.ess) ss += m.pct * m.pct; });
+    return { items: out, potential: Math.round(Math.sqrt(ss) * 10) / 10, essential: out.some(function (m) { return m.ess; }) };
+  }
+
   function parseListingText(t) {
     var o = {}; if (!t) return o;
     var s = t.replace(/ /g, ' ');
@@ -539,7 +661,8 @@ var CMA = (function () {
     OPT: OPT, M: M, lbl: lbl, fac: fac, DEFAULT_PARAMS: DEFAULT_PARAMS, TUNE_DEFAULT: TUNE_DEFAULT, LIQ: LIQ,
     evaluate: evaluate, calibrate: calibrate, benchmark: benchmark, adjustComp: adjustComp, zoneEff: zoneEff, zoneById: zoneById, isIlfov: isIlfov,
     aptBase: aptBase, eraT: eraT, eraLabel: eraLabel, floorLabel: floorLabel, parseEtaj: parseEtaj, isNewBlock: isNewBlock, parkInfo: parkInfo, parkLabel: parkLabel,
-    parseListingText: parseListingText, num: num, known: known, psych: psych, balcFactor: balcFactor, balcLabel: balcLabel, balcMp: balcMp
+    parseListingText: parseListingText, num: num, known: known, psych: psych, balcFactor: balcFactor, balcLabel: balcLabel, balcMp: balcMp,
+    setCalib: setCalib, calibFactor: calibFactor, calibInfo: calibInfo, baseFactor: baseFactor, missingImpact: missingImpact, baiFactor: baiFactor, materialFactor: materialFactor, certFactor: certFactor, TVA_NOU: TVA_NOU
   };
 })();
 if (typeof module !== 'undefined') module.exports = CMA;

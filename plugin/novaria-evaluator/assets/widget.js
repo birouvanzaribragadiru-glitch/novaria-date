@@ -62,6 +62,8 @@
   }
   function setData(d) {
     S.data = d;
+    // factorii calibrați din anunțuri (vin zilnic cu datele); motorul vechi nu are setCalib → se ignoră
+    try { if (E.setCalib) E.setCalib(d.calib && d.calib.factors ? d.calib : null); } catch (e) { }
     S.zones = d.zone.map(function (z) {
       var o = { id: z.id, nume: z.nume, grup: z.grup, alias: z.alias || [], lichiditate: z.lq || 'medie', st: z.st || {}, u: z.u || {} };
       if (z.sector) o.sector = z.sector; if (z.loc) o.loc = z.loc;
@@ -165,9 +167,19 @@
       m += field('incalzire', 'Încălzire', sel('incalzire', engOpt('incalzire')));
       m += field('balcon', 'Tip balcon', sel('balcon', engOpt('balcon')));
       if (isBuc()) m += field('metrou', 'Până la metrou', sel('metrou', [['', 'Nu știu / nu contează']].concat(E.OPT.metrou.slice(1).map(function (o) { return [o[0], o[1]]; }))), S.f.metrouAuto ? { hint: 'după strada aleasă, schimbă dacă e altfel' } : null);
-      var an = num(S.f.an);
+      var an = num(S.f.an), et = E.parseEtaj(S.f.etaj), tot = num(S.f.etajeTotal);
+      if (String(S.f.camere || '') !== '1' && E.OPT.bai) m += field('bai', 'Băi', sel('bai', [['', 'Nu știu'], ['1', '1'], ['2', '2'], ['3', '3+']]));
+      if (tot && tot >= 3 && !(tot < 3)) m += field('lift', 'Lift', sel('lift', DA_NU));
+      if (typeof et === 'number' && tot && et >= tot && tot >= 3 && E.OPT.acoperis) m += field('acoperis', 'Deasupra ultimului etaj', sel('acoperis', engOpt('acoperis')), { hint: 'terasa (acoperiș plat) sau șarpantă / etaj tehnic' });
+      if ((!an || an <= 2005) && E.OPT.material) m += field('material', 'Structura blocului', sel('material', engOpt('material')));
+      if (E.OPT.orientare) m += field('orientare', 'Orientare', sel('orientare', engOpt('orientare')));
+      if (E.OPT.cert) m += field('cert', 'Certificat energetic', sel('cert', [['', 'Nu știu'], ['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'D'], ['E', 'E'], ['F', 'F / G']]));
+      if (E.OPT.vedere) m += field('vedere', 'Expunere / vedere', sel('vedere', engOpt('vedere')));
+      if ((!an || an >= 2015) && E.OPT.stadiu) m += field('stadiu', 'Stadiul construcției', sel('stadiu', engOpt('stadiu')));
       if (!an || an <= 1990) m += field('seismic', 'Risc seismic', sel('seismic', engOpt('seismic')));
       if (!an || an <= 2005) m += field('anv', ' ', check('anvelopat', 'Bloc reabilitat termic (anvelopat)'), { cls: 'nvev-fck' });
+      m += field('mob', ' ', check('mobilat', 'Se vinde mobilat și utilat'), { cls: 'nvev-fck' });
+      m += field('box', ' ', check('boxa', 'Are boxă'), { cls: 'nvev-fck' });
     } else if (t === 'casa') {
       m += field('structura', 'Structura', sel('structura', engOpt('structura')));
       m += field('regim', 'Regim de înălțime', sel('regim', engOpt('regim')));
@@ -176,6 +188,8 @@
       m += field('utilGaz', 'Gaze', sel('utilGaz', DA_NU));
       m += field('asfalt', 'Stradă asfaltată', sel('asfalt', DA_NU));
       m += field('frontC', 'Front stradal', txt('frontC', 'ex. 15', 'm'));
+      if (E.OPT.bai) m += field('bai', 'Băi', sel('bai', [['', 'Nu știu'], ['1', '1'], ['2', '2'], ['3', '3+']]));
+      if (E.OPT.stadiu) m += field('stadiu', 'Stadiul construcției', sel('stadiu', engOpt('stadiu')));
       m += field('gar', ' ', check('garaj', 'Are garaj'), { cls: 'nvev-fck' });
     } else {
       m += field('destinatie', 'Ce se poate construi', sel('destinatie', engOpt('destinatie')));
@@ -232,7 +246,8 @@
     var an = f.ansamblu ? ansList().filter(function (a) { return a.id === f.ansamblu; })[0] : null;
     if (an) { var ap = an.p[S.tip]; s.ansamblu = an.n; s.micro = { f: ap / 100, nm: an.n, label: (ap > 0 ? '+' : ap < 0 ? '−' : '') + Math.abs(ap) + '% față de media zonei, după analiza Novaria a ansamblului', ans: 1 }; s.microPct = ap; }
     if (S.tip === 'apartament') {
-      ['camere', 'an', 'stare', 'etaj', 'etajeTotal', 'compart', 'incalzire', 'balcon', 'seismic'].forEach(function (k) { if (f[k]) s[k] = f[k]; });
+      ['camere', 'an', 'stare', 'etaj', 'etajeTotal', 'compart', 'incalzire', 'balcon', 'seismic', 'bai', 'lift', 'acoperis', 'material', 'orientare', 'cert', 'vedere', 'stadiu'].forEach(function (k) { if (f[k]) s[k] = f[k]; });
+      s.mobilat = !!f.mobilat; s.boxa = !!f.boxa;
       if (f.metrou && isBuc()) s.metrou = f.metrou;
       if (f.parcare) { var p = f.parcare.split('|'); s.parcareNr = p[0]; s.parcareTip = p[1]; } else s.parcareNr = '';
       s.anvelopat = !!f.anvelopat && (!num(f.an) || num(f.an) <= 2005);
@@ -241,7 +256,7 @@
       var bm = num(f.mpBalcon);
       if (f.mpBalcon !== '' && f.mpBalcon != null && bm != null && bm >= 0) { s.mpBalcon = String(bm); s.balcon = bm > 0 ? (s.balcon === 'terasa' ? 'terasa' : 'da') : 'nu'; }
     } else if (S.tip === 'casa') {
-      ['camere', 'an', 'stare', 'tipCasa', 'structura', 'regim', 'incalzire', 'teren'].forEach(function (k) { if (f[k]) s[k] = f[k]; });
+      ['camere', 'an', 'stare', 'tipCasa', 'structura', 'regim', 'incalzire', 'teren', 'bai', 'stadiu'].forEach(function (k) { if (f[k]) s[k] = f[k]; });
       ['utilCanal', 'utilGaz', 'asfalt'].forEach(function (k) { s[k] = f[k] === 'da' ? true : f[k] === 'nu' ? false : null; });
       if (f.frontC) s.front = f.frontC;
       s.garaj = !!f.garaj;
@@ -427,7 +442,7 @@
       var t = e.target.closest('[data-tip]');
       if (t) { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var keep = { zona: S.f.zona, strada: S.f.strada }; S.tip = t.getAttribute('data-tip'); S.f = keep; var mo0 = streetMetro(keep.strada); if (S.tip === 'apartament' && isBuc() && mo0) { S.f.metrou = String(mo0); S.f.metrouAuto = true; } renderForm(); if (S.shown) { var b = $('.nvev-result'); b.hidden = true; S.shown = false; $('.nvev-go').textContent = 'Vezi cât valorează'; } var nt = $('[data-tip="' + S.tip + '"]'); if (nt) nt.focus(); return; }
       var c = e.target.closest('[data-chip]');
-      if (c) { var k = c.getAttribute('data-chip'), v = c.getAttribute('data-v'); S.f[k] = S.f[k] === v ? '' : v; $$('[data-chip="' + k + '"]').forEach(function (b) { b.setAttribute('aria-checked', String(b.getAttribute('data-v') === S.f[k])); }); live(); return; }
+      if (c) { var k = c.getAttribute('data-chip'), v = c.getAttribute('data-v'); S.f[k] = S.f[k] === v ? '' : v; $$('[data-chip="' + k + '"]').forEach(function (b) { b.setAttribute('aria-checked', String(b.getAttribute('data-v') === S.f[k])); }); if (k === 'camere' && S.tip === 'apartament') { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; renderForm(); } live(); return; }
       if (e.target.closest('[data-act="print"]')) { window.print(); return; }
     });
     root.addEventListener('keydown', function (e) {
@@ -438,7 +453,8 @@
     });
     root.addEventListener('change', function (e) {
       if (e.target.closest('.nvev-lead')) return;
-      if (e.target.name === 'an') { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var foc = document.activeElement && document.activeElement.id; renderForm(); if (foc) { var el = document.getElementById(foc); if (el) el.focus(); } }
+      // câmpurile opționale depind de an, etaj și numărul de etaje (acoperiș, lift, material, seismic…): se redesenează
+      if (e.target.name === 'an' || e.target.name === 'etaj' || e.target.name === 'etajeTotal') { readForm(); S.moreOpen = !!($('.nvev-more') || {}).open; var foc = document.activeElement && document.activeElement.id; renderForm(); if (foc) { var el = document.getElementById(foc); if (el) el.focus(); } }
       if (e.target.name === 'zona') {
         readForm(); loadStreets(); refreshAns();
         if (S.f.metrouAuto) { S.f.metrou = ''; S.f.metrouAuto = false; }
