@@ -150,3 +150,5 @@
 }
 @media (prefers-reduced-motion: reduce) { .nvev * { transition: none !important; animation: none !important; } }
 .nvev-f.nvev-hide { display: none; }
+
+.nvev-rent{margin-top:6px;font-size:.88em;opacity:.9}.nvev-rent span{opacity:.75}

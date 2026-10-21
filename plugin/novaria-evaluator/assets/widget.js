@@ -295,6 +295,12 @@
     return { r: r, s: s, z: z, used: used, margin: m, min: round(P.realist * (1 - m), step), max: round(P.realist * (1 + m), step), realist: P.realist, ppm: P.realist / num(s.mp) };
   }
   var TIP_LBL = { apartament: 'apartament', casa: 'casă', teren: 'teren' };
+  // chiria mediană din zonă (din anunțurile de închiriere) → cât ar aduce închiriată și randamentul brut la prețul realist
+  function rentLine(x) {
+    var ch = x.z && x.z.ch && x.z.ch[S.tip]; if (!ch || !ch.med || S.tip === 'teren') return '';
+    var mp = num(x.s.mp), lunar = Math.round(ch.med * mp / 10) * 10, rand = x.realist ? Math.round(lunar * 12 / x.realist * 1000) / 10 : null;
+    return '<div class="nvev-sub nvev-rent">Închiriată ar aduce ~' + n0(lunar) + ' €/lună' + (rand ? ' · randament brut ' + String(rand).replace('.', ',') + '% la prețul realist' : '') + ' <span>(chiria mediană în zonă: ' + String(ch.med).replace('.', ',') + ' €/mp, din ' + ch.n + ' anunțuri)</span></div>';
+  }
   function basisText(x) {
     var d = S.data, z = x.z, when = dateRo(d.actualizat);
     if (x.used >= 5) return 'Calculat din ' + deN(x.used, 'anunțuri') + ' analizate în ' + z.nume + ', plus evoluția prețurilor din București și Ilfov. Date actualizate pe ' + when + '.';
@@ -330,6 +336,7 @@
       '<div class="nvev-lbl">Valoarea estimată a proprietății</div>' +
       '<div class="nvev-val"><b>' + eur(x.min) + '</b> <span>–</span> <b>' + eur(x.max) + '</b></div>' +
       '<div class="nvev-sub">≈ ' + n0(x.ppm) + ' €/mp · prețul la care se vinde realist ' + (TIP_LBL[S.tip] === 'casă' ? 'o casă' : 'un ' + TIP_LBL[S.tip]) + ' ca al tău în ' + esc(x.z ? x.z.nume : 'zonă') + '</div>' +
+      rentLine(x) +
       '</div>' +
       '<p class="nvev-basis">' + esc(basisText(x)) + '</p>' +
       warningsHTML(x, true) +

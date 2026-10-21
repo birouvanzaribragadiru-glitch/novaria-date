@@ -77,6 +77,13 @@ function novaria_ev_raport_bloc( $z, $tip, $d ) {
 	if ( isset( $din['zile'] ) && $din['zile'] > 0 ) {
 		$k[] = array( 'Vechimea ofertei', $din['zile'] . ' zile', 'mediană, de când sunt publicate anunțurile' );
 	}
+	$ch = isset( $z['ch'][ $tip ] ) ? $z['ch'][ $tip ] : null;
+	if ( $ch && ! empty( $ch['med'] ) ) {
+		$k[] = array( 'Chiria mediană', str_replace( '.', ',', (string) $ch['med'] ) . ' €/mp/lună', 'din ' . (int) $ch['n'] . ' anunțuri de închiriere' );
+		if ( ! empty( $ch['rand'] ) ) {
+			$k[] = array( 'Randament brut', str_replace( '.', ',', (string) $ch['rand'] ) . '%', 'chiria pe un an față de prețul cerut la vânzare' );
+		}
+	}
 	if ( ! $k ) {
 		return '';
 	}
@@ -99,6 +106,9 @@ function novaria_ev_raport_bloc( $z, $tip, $d ) {
 	}
 	if ( null !== $prop ) {
 		$p[] = $prop . '% din oferte sunt publicate direct de proprietari.';
+	}
+	if ( $ch && ! empty( $ch['rand'] ) ) {
+		$p[] = 'Pentru investitori: chiria mediană e ' . str_replace( '.', ',', (string) $ch['med'] ) . ' €/mp pe lună, adică un randament brut de ' . str_replace( '.', ',', (string) $ch['rand'] ) . '% pe an la prețurile cerute acum.';
 	}
 	$h  = '<div class="nvrp-bloc"><h3 class="nvrp-h3">' . esc_html( $lbl ) . '</h3><div class="nvrp-kpi">';
 	foreach ( $k as $x ) {

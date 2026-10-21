@@ -49,6 +49,7 @@ const ref = readColl('referinte').imo360 || null;
 const setari = readColl('setari').general || {};
 const istoric = readColl('istoric');                 // istoricul săptămânal pe zone (colectarea de luni): dinamica pieței
 const tranzactii = readColl('tranzactii');           // vânzările reale (registrul din aplicație): doar cifre agregate ies de aici
+const chirii = readColl('chirii');                   // anunțuri de închiriere (din alertele portalurilor): chiria mediană pe zonă → randament brut
 const now = Date.now();
 
 const R = NV_MARKET.compute(src, Z.zone, ref, Z.imoBase, setari.overrides || null, now);
@@ -163,6 +164,17 @@ function dyn(zid, tip) {
   if (tot >= 8) { o.cap = tot; o.capNoi = n28; o.capRed = Math.round(100 * red / tot); o.capProp = Math.round(100 * prop / tot); }
   return Object.keys(o).length ? o : null;
 }
+// chiria mediană pe zonă (€/mp/lună) și randamentul brut față de prețul cerut la vânzare; doar cu cel puțin 5 anunțuri de închiriere
+const MIN_CH = 5;
+function rentOf(zid, tip, saleMed) {
+  const d = chirii[zid + '__' + tip]; if (!d || !Array.isArray(d.anunturi)) return null;
+  const xs = d.anunturi.map(a => (+a.pret > 0 && +a.mp > 0) ? +a.pret / +a.mp : null).filter(x => x && x >= 2 && x <= 60);
+  if (xs.length < MIN_CH) return null;
+  const med = (() => { const a = xs.slice().sort((p, q) => p - q), n = a.length; return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2; })();
+  const o = { med: Math.round(med * 10) / 10, n: xs.length };
+  if (saleMed) o.rand = Math.round(med * 12 / saleMed * 1000) / 10;   // % pe an, brut
+  return o;
+}
 const zone = zonesEff.map(z => {
   const st = R.stats[z.id] || {}, o = { id: z.id, nume: z.nume, grup: z.grup, alias: z.alias || [], v: {}, lq: z.lichiditate || 'medie' };
   if (z.sector) o.sector = z.sector; if (z.loc) o.loc = z.loc;
@@ -175,8 +187,11 @@ const zone = zonesEff.map(z => {
   if (Object.keys(u).length) o.u = u;
   const din = {}; for (const t of ['apartament', 'casa']) { const d = dyn(z.id, t); if (d) din[t] = d; }
   if (Object.keys(din).length) o.din = din;
+  const ch = {}; for (const t of ['apartament', 'casa']) { const r = rentOf(z.id, t, o.st && o.st[t] && o.st[t].med); if (r) ch[t] = r; }
+  if (Object.keys(ch).length) o.ch = ch;
   return o;
 });
+console.log('   zone cu chirii (randament):', zone.filter(z => z.ch).length);
 console.log('   zone cu dinamică (raport lunar):', zone.filter(z => z.din).length);
 
 // factorii de ajustare calibrați din anunțuri (lib/calib.json, scris de scripts/calibrare.js): doar cei aplicați, fără altceva

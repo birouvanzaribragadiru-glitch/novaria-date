@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.5.0
+ * Version:           1.5.1
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.5.0' );
+define( 'NOVARIA_EV_VER', '1.5.1' );
 require_once __DIR__ . '/includes/raport.php';
 require_once __DIR__ . '/includes/urmarire.php';
 define( 'NOVARIA_EV_KEY_OPT', 'novaria_ev_api_key' );   // cheia cu care aplicația internă Novaria citește evaluările de pe site

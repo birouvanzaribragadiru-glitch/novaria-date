@@ -200,6 +200,11 @@ def imob_real_link(url):
     except Exception:
         return None
 
+def oferta_from(msg):
+    t = norm((msg.get('subject') or '') + ' ' + (msg.get('plaintextBody') or msg.get('htmlBody') or '')[:4000])
+    if re.search(r'inchiri|chirie|de inchiriat|/ ?luna\b|pe luna\b', t): return 'inchiriere'
+    return 'vanzare'
+
 def tip_from(text):
     t = norm(text)
     if re.search(r'apartament|garsonier', t): return 'apartament'
@@ -331,6 +336,8 @@ for mid, m in sorted(messages.items(), key=lambda kv: ms_of(kv[1])):
     if kind is None: skipped['nerelevante'] += 1; continue
     if kind == 'olx': skipped['olx'] += 1; per_msg[mid] = 0; continue
     got = parse_imobiliare(m) if kind == 'imobiliare' else parse_storia(m)
+    of = oferta_from(m)
+    for a in got: a['oferta'] = of
     if kind == 'imobiliare':
         mh = re.match(r'\s*(\d+)\s+anun', m.get('subject') or '')
         if mh and int(mh.group(1)) > len(got): HIDDEN['imobiliare'] += int(mh.group(1)) - len(got); HIDDEN['emailuri_cu_ascunse'] += 1
@@ -372,6 +379,14 @@ def ok(a):
     if a['tip'] == 'teren' and not (3 <= ppm <= 5000): return False
     return True
 
+def ok_rent(a):
+    p, m = a.get('pret'), a.get('mp')
+    if not p or not m or m < 8: return False
+    ppm = p / m
+    return 2 <= ppm <= 60 and p <= 15000        # chirii lunare: 2–60 €/mp/lună
+
+chirii_brute = [a for a in listings if a.get('oferta') == 'inchiriere']
+listings = [a for a in listings if a.get('oferta') != 'inchiriere']
 valid = [a for a in listings if ok(a)]
 by_key, order = {}, []
 for a in valid:
@@ -490,6 +505,38 @@ for key, lst in sorted(groups.items()):
     elif prev: print('ATENȚIE: lipsește versiunea pentru portaluri/' + key)
     writes.append(w); port_docs += 1
 
+# ---------- chirii (anunțuri de închiriere: o colecție separată, pentru randamente pe zone; nu intră în comparabilele de vânzare) ----------
+RET_CHIRII_ZILE, CHIRII_MAX = 120, 80
+os.makedirs(os.path.join(out_dir, 'chirii'), exist_ok=True)
+rent_by, rent_order = {}, []
+for a in chirii_brute:
+    if not ok_rent(a) or not a.get('zona'): continue
+    k = cheie(a)
+    if k in rent_by: continue
+    rent_by[k] = a; rent_order.append(k)
+rent_groups = {}
+for k in rent_order:
+    a = rent_by[k]; rent_groups.setdefault(a['zona'] + '__' + a['tip'], []).append(a)
+chirii_docs, chirii_n = 0, 0
+for key, lst in sorted(rent_groups.items()):
+    zona, tip = key.split('__', 1)
+    prev = prev_doc('chirii', key) or {}
+    old = [x for x in (prev.get('anunturi') or []) if isinstance(x, dict)]
+    by_c = {x.get('cheie'): x for x in old if x.get('cheie')}
+    for a in lst:
+        s2 = slim(a); c = s2['cheie']
+        if c in by_c: s2['venitLa'] = min(by_c[c].get('venitLa') or s2['venitLa'], s2['venitLa'])
+        by_c[c] = s2; chirii_n += 1
+    cutoff = (utcnow() - datetime.timedelta(days=RET_CHIRII_ZILE)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    items = sorted([x for x in by_c.values() if (x.get('venitLa') or '') >= cutoff], key=lambda x: x.get('venitLa') or '', reverse=True)[:CHIRII_MAX]
+    doc = {'zona': zona, 'tip': tip, 'oferta': 'inchiriere', 'actualizatLa': utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'anunturi': [{k2: v for k2, v in x.items() if v is not None} for x in items]}
+    fp = os.path.join(out_dir, 'chirii', key + '.json')
+    with open(fp, 'w', encoding='utf-8') as f: json.dump(doc, f, ensure_ascii=False)
+    w = {'op': 'set', 'collection': 'chirii', 'doc_id': key, 'file_path': fp}
+    if versions.get('chirii/' + key): w['if_version'] = versions['chirii/' + key]
+    elif prev: print('ATENȚIE: lipsește versiunea pentru chirii/' + key)
+    writes.append(w); chirii_docs += 1
+
 # ---------- alerte (anunțurile de la persoane fizice, pentru „Proprietari”) ----------
 prev_al = prev_doc('alerte', TODAY) or {}
 al_items = [x for x in (prev_al.get('anunturi') or []) if isinstance(x, dict)]
@@ -527,7 +574,7 @@ for a in uniq: src[a['sursa']] = src.get(a['sursa'], 0) + 1
 rez = {'mesaje_noi': len(per_msg), 'sarite': skipped, 'anunturi_unice': len(uniq), 'pe_surse': src, 'cu_zona': sum(1 for a in uniq if a.get('zona')),
        'fara_zona': sum(1 for a in uniq if not a.get('zona')), 'persoane': sum(1 for a in uniq if a.get('vanzator') == 'persoana'),
        'capturi': {'noi': cap_new, 'actualizate': cap_upd, 'sterse_vechi': cap_del, 'shard_uri': len(by_shard)}, 'portaluri_docs': port_docs,
-       'alerte_azi': len(al_items), 'neincapute_in_email': HIDDEN, 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
+       'alerte_azi': len(al_items), 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
 with open(os.path.join(out_dir, 'rezumat.json'), 'w', encoding='utf-8') as f: json.dump(rez, f, ensure_ascii=False, indent=1)
 print('Rezumat:', json.dumps(rez, ensure_ascii=False))
 print('Scrieri:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(out_dir, 'writes.json'))
