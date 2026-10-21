@@ -1,5 +1,13 @@
 # Textul task-ului programat „Novaria – date zilnice pentru evaluatorul de pe site”
 
+Actualizat 21 oct. 2026: include vânzările agenților (pasul 2b) și alimentarea copiei Parteneri (pasul 5). Textul curent e cel din task (list_triggers); rezumatul pașilor:
+
+1. clonează depozitul; 2. dump colecții din aplicația principală în /tmp/nvdump (piata, istoric, agentii, portaluri, capturi, chirii, referinte, setari, tranzactii, alerte, rapoarte, calib) + 2b agenti/*/tranzactii din ambele aplicații; 3. export.js; 3b calibrare.js; 3c calib/current; 4. commit + push; 5. nv_versiuni.py + nv_feed.py + batch-uri în Parteneri; 6. raport.
+
+---
+
+# Textul task-ului programat „Novaria – date zilnice pentru evaluatorul de pe site”
+
 Varianta de mai jos adaugă pasul 3b (calibrarea factorilor din anunțuri → `lib/calib.json`) față de textul actual al task-ului.
 Se lipește integral în câmpul de instrucțiuni al task-ului programat (claude.ai → Scheduled tasks → task-ul de mai sus → Edit).
 

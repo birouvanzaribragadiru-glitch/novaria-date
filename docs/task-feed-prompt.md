@@ -1,6 +1,6 @@
 # Textul task-ului programat „Novaria – alimentare Parteneri”
 
-Rulează zilnic la 22:17 (Europe/Bucharest), după exportul de la 21:37. Se lipește integral în câmpul de instrucțiuni al task-ului.
+NOTĂ (21 oct. 2026): crearea unui task separat a fost refuzată de platformă, așa că acești pași sunt incluși ca pasul 5 în task-ul „Novaria – date zilnice pentru evaluatorul de pe site” (21:37), care are deja dump-ul aplicației principale în /tmp/nvdump. Textul de mai jos rămâne ca referință pentru un task de sine stătător.
 
 ---
 
