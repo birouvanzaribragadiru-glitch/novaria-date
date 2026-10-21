@@ -26,3 +26,6 @@ Baza fiecărei aplicații are aceleași reguli de acces (`docs/app-capabilities.
 
 ## Invitarea agenților
 Share (dreapta sus) → adresa de e-mail → Editor (singurul rol care, în afara organizației, poate salva). Niciodată „Anyone with the link”. Agentul apare în „Echipa” după prima deschidere a aplicației și își declară o dată adresa de e-mail (platforma nu o dă). Un lead se trimite unui agent din „Proprietari”, „Azi” sau „Dosare → De pe site” cu „Trimite la…”.
+
+## Capturile din paginile de rezultate
+Portalurile (mai ales Storia) umplu paginile cu „alte anunțuri” din toată țara. Din v49 captura ignoră cardurile a căror localizare se termină cu alt județ decât Ilfov/București și scoate din calcul anunțurile cu preț/suprafață evident greșit citite (marcate `exclus`, cu zona inițială păstrată în `zonaInitiala`, deci reversibil). Pe 21 oct. 2026 s-au curățat la fel capturile existente (43 din alte județe, ~65 cu prețuri aberante) și s-a completat `teren` din titlu unde lipsea (`terenDin: "titlu"`).
