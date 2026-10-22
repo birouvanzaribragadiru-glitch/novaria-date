@@ -23,6 +23,7 @@ Baza fiecărei aplicații are aceleași reguli de acces (`docs/app-capabilities.
 - „date zilnice pentru evaluatorul de pe site” (21:37) — export + calibrare; citește și vânzările agenților din `agenti/*/tranzactii` (principală și Parteneri).
 - „alimentare Parteneri” (22:17) — `docs/task-feed-prompt.md`.
 - „paznicul aplicațiilor” (06:23, 15:23) — `docs/task-paznic-prompt.md`: compară amprenta paginilor live cu copia bună și restaurează.
+- „copie de siguranță săptămânală” (duminică 04:13, creat 22 oct. 2026) — `docs/task-backup-prompt.md`: toate colecțiile și subcolecțiile, arhivă criptată în `backup/` (ultimele 6).
 
 ## Invitarea agenților
 Share (dreapta sus) → adresa de e-mail → Editor (singurul rol care, în afara organizației, poate salva). Niciodată „Anyone with the link”. Agentul apare în „Echipa” după prima deschidere a aplicației și își declară o dată adresa de e-mail (platforma nu o dă). Un lead se trimite unui agent din „Proprietari”, „Azi” sau „Dosare → De pe site” cu „Trimite la…”.
@@ -46,3 +47,9 @@ Portalurile (mai ales Storia) umplu paginile cu „alte anunțuri” din toată 
 - Istoria anunțurilor (vechime, reduceri, repostări, reactivări, retrageri) o ține deja `nv_piata.py` din colectarea săptămânală; la 22 oct. avea o singură rulare (19 oct.), deci filtrele de timp se umplu de la rulările următoare.
 - v55 (22 oct., la cererea lui Lucian): fără filtre din oficiu; „De sunat” pe Azi = lista lui plus proprietarii găsiți și nesalvați încă (un stadiu sau o notă pus pe unul nesalvat îl salvează); filtrele detaliate stau în butonul „Filtre”; filtrele din browser au cheia nouă `nv-fq2-<listă>`.
 - v56 (22 oct.): pe Azi, în loc de panoul de filtre, trei alegeri simple: Sub piață (−10…−30%, case/terenuri −20…−60%), Stau de mult (60+ zile, repostat sau revenit), Peste piață (+15…+50%, case/terenuri +30…+100%); doar proprietari credibili, cu preț și suprafață, încă pe piață, fără „fără agenții”. Panoul complet rămâne în Proprietari.
+
+## Baza aplicației: limite și curățenia din 22 oct. 2026
+- Limitele bazei unui artefact: 25.000 de documente, 256 KiB pe document și o limită de mărime totală (nepublicată). Datele care cresc se țin în pachete (mai multe elemente într-un document), nu câte un document pe element.
+- 22 oct.: baza avea 14.211 documente, dintre care 13.141 în colecția veche `lipite` (un document pe anunț capturat, oprită pe 19–20 oct., când anunțurile au trecut în cele 128 de pachete `capturi`; aplicația și task-urile nu o mai citeau). Verificare înainte de ștergere: toate cele 13.141 erau în pachete (10.810 identice, 2.331 în varianta corectată pe 21 oct.). Copie completă: `backup/novaria-2026-10-21.tar.gz.enc` (criptată) și o copie zip pe laptopul lui Lucian (Downloads), fără documentul cu chei. Apoi s-a pornit ștergerea colecției `lipite` (263 de loturi a câte 50); după ea, restul bazei ≈ 1.070 de documente.
+- Ce crește cu timpul: `alerte` (un document pe zi), `rapoarte` (unul pe colectare), `proprietari` (unul pe proprietar salvat). Când se apropie de limită: arhivare lunară a celor vechi în `backup/` + indicator în Setări (neimplementate încă).
+
