@@ -13,7 +13,7 @@ Baza fiecărei aplicații are aceleași reguli de acces (`docs/app-capabilities.
 ## Publicarea unei versiuni noi (din sesiunea de lucru)
 1. `cd /home/claude/cma && NV_MIN=1 python3 build.py` → `novaria-evaluator.html` (compactat și amestecat cu terser).
 2. `NV_MIN=1 NV_VARIANT=parteneri NV_PARTNER_URL=https://claude.ai/artifact/GcUhs6jbMpzu4FJ6BRNcEh python3 build.py` → `novaria-evaluator-parteneri.html`.
-3. Artifact publish pentru fiecare, cu `capabilities` = `docs/app-capabilities.json` (întotdeauna explicit, ca regulile să nu rămână cumva cele ale altcuiva).
+3. Artifact publish pentru fiecare, cu `capabilities` = `docs/app-capabilities-echipa.json` pentru principală și `docs/app-capabilities.json` pentru Parteneri (întotdeauna explicit, ca regulile să nu rămână cumva cele ale altcuiva).
 4. Copia bună pentru paznic: Artifact read cu `path: index.html` și `out_dir` (dă pagina servită + versionId), apoi
    `python3 -I scripts/app_guard.py store <pagina.html> <main|parteneri> docs/app-capabilities.json <versionId> <dir> <pagina-servita.html>`
    și scrie loturile din `<dir>/writes.json` în baza aplicației PRINCIPALE cu ArtifactData batch (documentele `app/<nume>` și `app/<nume>/chunks/<i>` există deja: ia-le versiunile cu `list` și pune `if_version`).
@@ -53,3 +53,9 @@ Portalurile (mai ales Storia) umplu paginile cu „alte anunțuri” din toată 
 - 22 oct.: baza avea 14.211 documente, dintre care 13.141 în colecția veche `lipite` (un document pe anunț capturat, oprită pe 19–20 oct., când anunțurile au trecut în cele 128 de pachete `capturi`; aplicația și task-urile nu o mai citeau). Verificare înainte de ștergere: toate cele 13.141 erau în pachete (10.810 identice, 2.331 în varianta corectată pe 21 oct.). Copie completă: `backup/novaria-2026-10-21.tar.gz.enc` (criptată) și o copie zip pe laptopul lui Lucian (Downloads), fără documentul cu chei. Apoi, cu acordul explicit al lui Lucian, colecția `lipite` a fost ștearsă integral pe 22 oct. (263 de loturi a câte 50, toate 13.141 de documente; verificat după: colecția e goală). Pachetele `capturi` au rămas neatinse: 128 de pachete cu 16.091 de anunțuri. Baza are acum ≈ 1.070 de documente (≈ 4% din limita de 25.000).
 - Ce crește cu timpul: `alerte` (un document pe zi), `rapoarte` (unul pe colectare), `proprietari` (unul pe proprietar salvat). Când se apropie de limită: arhivare lunară a celor vechi în `backup/` + indicator în Setări (neimplementate încă).
 
+## Oferta pe WhatsApp (v57 principală, 22 oct. 2026) — doar Lucian
+- Buton „WhatsApp” pe fiecare proprietar din Azi și din Proprietari, vizibil numai pentru proprietarul aplicației (agentele și copia Parteneri nu îl au).
+- Pasul 1: mesaj scurt, personal (cine e Lucian, ce a văzut în anunț, „v-am pregătit gratuit o analiză, v-o trimit aici?”). Pasul 2, după răspuns: mesajul cu cifrele și oferta + PDF-ul de 2 pagini (analiză de piață, de ce nu se vinde, cum se vinde, oferta, despre Lucian), generat în aplicație cu jsPDF și fonturile Novaria.
+- Oferta: comision 3% în loc de 5% dacă listăm la prețul real de piață din analiză, exclusivitate 3–6 luni, valabilă 14 zile; alternativ pachetul media 250 € în loc de 500 € până pe 31 dec. 2026. „Fără agenții” → doar pachetul media. Constantele stau în `OF_CFG` din `app.js`.
+- Ce s-a trimis se ține în colecția `oferte` (regulă owner/owner): doc per anunț cu m1/m2/sit/pana și o amprentă (SHA-256 trunchiat) a telefonului, ca să nu se scrie de două ori aceluiași om de pe anunțuri diferite. Telefonul în clar nu se salvează.
+- Sursele aplicației: `app/src-2026-10-22-v57.tar.gz.enc` (aceeași cheie ca backup-ul; fără `harta/`, care stă în fișierele publicate ale artefactului).
