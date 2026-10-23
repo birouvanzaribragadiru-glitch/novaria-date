@@ -37,6 +37,18 @@ function captures(lipite, packs) {
 let src;
 if (fs.statSync(inp).isDirectory()) src = { piata: readColl(inp, 'piata'), agentii: readColl(inp, 'agentii'), portaluri: readColl(inp, 'portaluri'), lipite: captures(readColl(inp, 'lipite'), readColl(inp, 'capturi')) };
 else { const db = JSON.parse(fs.readFileSync(inp, 'utf8')); src = { piata: unwrap(db.piata), agentii: unwrap(db.agentii), portaluri: unwrap(db.portaluri), lipite: captures(unwrap(db.lipite), unwrap(db.capturi)) }; }
+// anunțurile HomeZZ sunt doar pentru uz intern (acordul cu HomeZZ): nu intră în nicio cifră publică
+function eHz(a) { return !!a && typeof a === 'object' && (a.sursa === 'homezz' || /homezz\.ro/.test(String(a.link || ''))); }
+function faraHz(src, extra) {
+  let n = 0;
+  for (const id of Object.keys(src.lipite || {})) if (eHz(src.lipite[id])) { delete src.lipite[id]; n++; }
+  for (const coll of [src.portaluri].concat(extra || [])) for (const k of Object.keys(coll || {})) {
+    const d = coll[k]; if (!d || !Array.isArray(d.anunturi)) continue;
+    const l2 = d.anunturi.filter(a => !eHz(a)); n += d.anunturi.length - l2.length; coll[k] = Object.assign({}, d, { anunturi: l2 });
+  }
+  if (n) console.log('HomeZZ: sărite', n, 'anunțuri (uz intern)');
+}
+faraHz(src);
 
 const zmap = {}; Z.zone.forEach(z => { zmap[z.id] = z; });
 const now = Date.now();

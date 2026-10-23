@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # Novaria — alimentarea copiei „Parteneri” cu datele de piață din aplicația principală, într-o singură direcție
-# (principal → parteneri), FĂRĂ zonele rezervate (sectoarele 5 și 6, Bragadiru, Domnești, Măgurele) și fără datele
-# interne (dosare, proprietari, cumpărători, vânzări, evaluările de pe site, chei, sertarele agenților).
+# (principal → parteneri), FĂRĂ zonele rezervate (sectoarele 5 și 6, Bragadiru, Domnești, Măgurele), fără datele
+# interne (dosare, proprietari, cumpărători, vânzări, evaluările de pe site, chei, sertarele agenților) și fără
+# anunțurile HomeZZ (acordul cu HomeZZ e doar pentru uz intern: Lucian și agentele lui).
 #
 #   python3 -I nv_feed.py <dir-sursa> <dir-destinatie> <dir-iesire> [--versiuni versions.txt] [--zone-rezervate a,b,c] [--sectoare 5,6]
 #
@@ -89,10 +90,17 @@ def emit(coll, doc_id, doc):
         else: lipsa_versiune.append(k)
     writes.append(w); stats[coll] = stats.get(coll, 0) + 1
 
-# 1. colecțiile pe zonă/tip: documentul intră întreg sau deloc
+# anunțurile HomeZZ sunt doar pentru uz intern (acordul cu HomeZZ): nu intră niciodată în copia Parteneri
+def e_hz(x): return isinstance(x, dict) and (x.get('sursa') == 'homezz' or 'homezz.ro' in str(x.get('link') or ''))
+def fara_hz(lst): return [x for x in lst if not e_hz(x)]
+hz_sarite = 0
+
+# 1. colecțiile pe zonă/tip: documentul intră întreg sau deloc (portaluri și chirii: fără anunțurile HomeZZ)
 for coll in ('piata', 'istoric', 'portaluri', 'chirii', 'agentii'):
     for k, d in docs_of(SRC, coll).items():
         if not key_ok(k) or not zona_ok(d.get('zona')): continue
+        if isinstance(d.get('anunturi'), list):
+            l2 = fara_hz(d['anunturi']); hz_sarite += len(d['anunturi']) - len(l2); d = dict(d); d['anunturi'] = l2
         emit(coll, k, d)
 # 2. capturile: pachetele intră, dar fără anunțurile din zonele rezervate și fără capturile manuale cu dosar/notă
 cap_tot = cap_ok = 0
@@ -102,6 +110,7 @@ for k, d in docs_of(SRC, 'capturi').items():
     for aid, ad in a.items():
         cap_tot += 1
         if not isinstance(ad, dict) or not zona_ok(ad.get('zona')): continue
+        if e_hz(ad): hz_sarite += 1; continue
         cap_ok += 1
         ad = dict(ad); ad.pop('dosar', None); ad.pop('nota', None); ad.pop('captura', None)
         a2[aid] = ad
@@ -111,13 +120,13 @@ for k, d in docs_of(SRC, 'alerte').items():
     if k == 'stare': continue
     d2 = dict(d)
     for fld in ('anunturi', 'proprietari', 'noi'):
-        if isinstance(d2.get(fld), list): d2[fld] = [x for x in d2[fld] if not isinstance(x, dict) or zona_ok(x.get('zona'))]
+        if isinstance(d2.get(fld), list): d2[fld] = [x for x in fara_hz(d2[fld]) if not isinstance(x, dict) or zona_ok(x.get('zona'))]
     emit('alerte', k, d2)
 # 4. rapoartele zilnice: listele filtrate
 for k, d in docs_of(SRC, 'rapoarte').items():
     d2 = dict(d)
     for fld in ('zone', 'oportunitati', 'leaduri'):
-        if isinstance(d2.get(fld), list): d2[fld] = [x for x in d2[fld] if not isinstance(x, dict) or (zona_ok(x.get('zona')) and key_ok(x.get('key', '')))]
+        if isinstance(d2.get(fld), list): d2[fld] = [x for x in fara_hz(d2[fld]) if not isinstance(x, dict) or (zona_ok(x.get('zona')) and key_ok(x.get('key', '')))]
     emit('rapoarte', k, d2)
 # 5. referințele imo360: fără zonele rezervate
 for k, d in docs_of(SRC, 'referinte').items():
@@ -144,6 +153,6 @@ with open(os.path.join(OUT, 'writes.json'), 'w', encoding='utf-8') as f: json.du
 print('Zone rezervate (excluse):', len(REZ), sorted(REZ))
 print('Documente de scris:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(OUT, 'writes.json'))
 print('Pe colecții:', json.dumps(stats, ensure_ascii=False), '· neschimbate (sărite):', neschimbate)
-print('Capturi: anunțuri păstrate', cap_ok, 'din', cap_tot)
+print('Capturi: anunțuri păstrate', cap_ok, 'din', cap_tot, '· HomeZZ sărite (uz intern):', hz_sarite)
 if lipsa_versiune:
     print('ATENȚIE: lipsește versiunea pentru', len(lipsa_versiune), 'documente existente în copie (scrierile lor vor fi refuzate):', lipsa_versiune[:8])

@@ -13,6 +13,7 @@
 # DIR/versions.txt     textul listărilor ArtifactData (liniile cu  "doc_id"  N bytes  version V), ca să pinuim scrierile
 # DIR/zones.json       lib/zones.json din novaria-date (lista zonelor cu aliasuri)
 # DIR/extra.json       opțional: listă de anunțuri extrase altfel (ex. Publi24): {sursa, tip, titlu, pret, mp, camere, etaj, loc sau zona, link, vanzator, venitLa (ISO sau ms)}
+#                      HomeZZ (nv_homezz.py) mai pune oras, cartier și faraAlerta (anunț mai vechi: doar în comparabile, nu în alertele de azi)
 #
 # Ce scrie în DIR/out/: capturi/sNNN.json (update: doar anunțurile noi/schimbate), portaluri/<zona>__<tip>.json (set),
 # alerte/<azi>.json (set), alerte/stare.json (set) și writes.json (loturi de cel mult 50 de scrieri pentru ArtifactData batch).
@@ -111,7 +112,7 @@ EXTRA = {   # nume de pe portaluri -> zona din aplicație (completează aliasuri
 ALIAS = {}
 def _add(k, zid):
     k = norm(k)
-    if len(k) < 3: return
+    if len(k) < 3 or k in ('bucuresti', 'ilfov', 'romania', 'judetul ilfov'): return     # „Pipera (București)” nu face din „București” un alias
     ALIAS.setdefault(k, [])
     if zid not in ALIAS[k]: ALIAS[k].append(zid)
 for k, v in EXTRA.items(): _add(k, v)
@@ -170,6 +171,28 @@ def zone_from_title(titlu, loc_text):
             best = zid; break
         if best: break
     return best
+
+def zona_homezz(a):
+    """HomeZZ: cartierul ales de vânzător e des greșit (și „București” apare și la anunțuri din Ilfov), deci întâi titlul,
+    apoi cartierul, apoi localitatea; oricare zonă din aplicație: prima numită în text (la egalitate, cea mai lungă)"""
+    def scan(text, mn):
+        t = ' ' + norm(text) + ' '
+        if not t.strip(): return None
+        best = None
+        for key in ALIAS_KEYS:
+            if len(key) < mn: continue
+            i = t.find(' ' + key + ' ')
+            if i < 0: continue
+            zid = next((z for z in ALIAS[key] if ZID.get(z)), None)
+            if zid and (best is None or (i, -len(key)) < best[0]): best = ((i, -len(key)), zid)
+        return best[1] if best else None
+    oras = a.get('oras') or ''
+    for txt, mn in ((a.get('titlu'), 5), (a.get('cartier'), 4), ('' if norm(oras) in ('', 'bucuresti') else oras, 4)):
+        zid = scan(txt or '', mn)
+        if zid: return zid
+    key = (a.get('loc') or a.get('titlu') or '').strip()[:60]
+    if key: UNMAPPED[key] = UNMAPPED.get(key, 0) + 1
+    return None
 
 # ---------- e-mailuri ----------
 def html_lines(h):
@@ -318,6 +341,9 @@ def cheie(a):
     return '%s|%s|%.1f|%s' % (a['sursa'], a['tip'], a['mp'] or 0, re.sub(r'[^a-z0-9]', '', norm(a['titlu']))[:40])
 
 def cap_id(a):
+    if a['sursa'] == 'homezz' and a.get('link'):
+        m = re.search(r'-(\d{5,})\.html$', a['link'])
+        if m: return 'hz' + m.group(1)
     if a['sursa'] == 'imobiliare' and a.get('link'):
         m = re.search(r'-(\d{6,})/?$', a['link']) or re.search(r'/oferta/.*?(\w{8,})$', a['link'])
         if m: return 'im' + m.group(1)
@@ -373,7 +399,7 @@ for a in (load(os.path.join(BASE, 'extra.json'), []) or []):
         try: a['venitLa'] = int(datetime.datetime.strptime(v[:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=datetime.timezone.utc).timestamp() * 1000)
         except Exception: a['venitLa'] = NOW_MS
     elif not isinstance(v, (int, float)): a['venitLa'] = NOW_MS
-    if not a.get('zona'): a['zona'] = map_zone(a.get('loc') or '', ilfov=True)
+    if not a.get('zona'): a['zona'] = zona_homezz(a) if a['sursa'] == 'homezz' else map_zone(a.get('loc') or '', ilfov=True)
     if a.get('zona') and a['zona'] not in ZID: a['zona'] = map_zone(a['zona'], ilfov=True)
     if a.get('link'): extra_links.append(a['link'])
     listings.append(a)
@@ -550,7 +576,7 @@ prev_al = prev_doc('alerte', TODAY) or {}
 al_items = [x for x in (prev_al.get('anunturi') or []) if isinstance(x, dict)]
 al_keys = {x.get('cheie') for x in al_items}
 for a in uniq:
-    if a.get('vanzator') != 'persoana' or not a.get('zona'): continue
+    if a.get('vanzator') != 'persoana' or not a.get('zona') or a.get('faraAlerta'): continue     # faraAlerta: anunț mai vechi (HomeZZ), doar în comparabile
     s = slim(a); s['zona'] = a['zona']; s['tip'] = a['tip']
     if s['cheie'] in al_keys or s['cheie'] in chei_vechi: continue
     al_items.append({k: v for k, v in s.items() if v is not None}); al_keys.add(s['cheie'])

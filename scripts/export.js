@@ -44,7 +44,19 @@ function readCaptures() {
   if (Object.keys(packs).length) console.log('capturi:', Object.keys(packs).length, 'pachete,', n, 'anunțuri');
   return o;
 }
+// anunțurile HomeZZ sunt doar pentru uz intern (acordul cu HomeZZ): nu intră în nicio cifră publică
+function eHz(a) { return !!a && typeof a === 'object' && (a.sursa === 'homezz' || /homezz\.ro/.test(String(a.link || ''))); }
+function faraHz(src, extra) {
+  let n = 0;
+  for (const id of Object.keys(src.lipite || {})) if (eHz(src.lipite[id])) { delete src.lipite[id]; n++; }
+  for (const coll of [src.portaluri].concat(extra || [])) for (const k of Object.keys(coll || {})) {
+    const d = coll[k]; if (!d || !Array.isArray(d.anunturi)) continue;
+    const l2 = d.anunturi.filter(a => !eHz(a)); n += d.anunturi.length - l2.length; coll[k] = Object.assign({}, d, { anunturi: l2 });
+  }
+  if (n) console.log('HomeZZ: sărite', n, 'anunțuri (uz intern)');
+}
 const src = { piata: readColl('piata'), agentii: readColl('agentii'), portaluri: readColl('portaluri'), lipite: readCaptures() };
+faraHz(src);
 const ref = readColl('referinte').imo360 || null;
 const setari = readColl('setari').general || {};
 const istoric = readColl('istoric');                 // istoricul săptămânal pe zone (colectarea de luni): dinamica pieței
@@ -66,7 +78,7 @@ for (const base of [dump, path.join(dump, 'parteneri')]) {
   }
 }
 if (nAgSales) console.log('   vânzări ale agenților:', nAgSales);
-const chirii = readColl('chirii');                   // anunțuri de închiriere (din alertele portalurilor): chiria mediană pe zonă → randament brut
+const chirii = readColl('chirii'); faraHz({ lipite: {}, portaluri: chirii });                   // anunțuri de închiriere (din alertele portalurilor): chiria mediană pe zonă → randament brut
 const now = Date.now();
 
 const R = NV_MARKET.compute(src, Z.zone, ref, Z.imoBase, setari.overrides || null, now);
