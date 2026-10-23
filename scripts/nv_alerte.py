@@ -187,8 +187,13 @@ def zona_homezz(a):
             if zid and (best is None or (i, -len(key)) < best[0]): best = ((i, -len(key)), zid)
         return best[1] if best else None
     oras = a.get('oras') or ''
-    for txt, mn in ((a.get('titlu'), 5), (a.get('cartier'), 4), ('' if norm(oras) in ('', 'bucuresti') else oras, 4)):
-        zid = scan(txt or '', mn)
+    zid = scan(a.get('titlu') or '', 5)
+    if zid: return zid
+    c = norm(a.get('cartier') or '')                    # cartierul e un câmp: întâi potrivire exactă (și „Tei”, „Obor”)
+    zid = next((z for z in ALIAS.get(c, []) if ZID.get(z)), None) if c else None
+    if zid: return zid
+    for txt in (a.get('cartier'), '' if norm(oras) in ('', 'bucuresti') else oras):
+        zid = scan(txt or '', 4)
         if zid: return zid
     key = (a.get('loc') or a.get('titlu') or '').strip()[:60]
     if key: UNMAPPED[key] = UNMAPPED.get(key, 0) + 1
@@ -389,7 +394,8 @@ linkuri_vechi = set(stare.get('linkuri') or [])
 extra_links = []
 for a in (load(os.path.join(BASE, 'extra.json'), []) or []):
     if not isinstance(a, dict) or not a.get('sursa'): continue
-    if a.get('link') and a['link'] in linkuri_vechi and not COUNT_ONLY: continue
+    hz = a.get('sursa') == 'homezz'
+    if a.get('link') and a['link'] in linkuri_vechi and not COUNT_ONLY and not hz: continue
     a.setdefault('tip', tip_from(a.get('titlu') or '') or 'apartament')
     a['titlu'] = str(a.get('titlu') or '')[:80]
     for k in ('pret', 'mp', 'teren'):
@@ -401,7 +407,7 @@ for a in (load(os.path.join(BASE, 'extra.json'), []) or []):
     elif not isinstance(v, (int, float)): a['venitLa'] = NOW_MS
     if not a.get('zona'): a['zona'] = zona_homezz(a) if a['sursa'] == 'homezz' else map_zone(a.get('loc') or '', ilfov=True)
     if a.get('zona') and a['zona'] not in ZID: a['zona'] = map_zone(a['zona'], ilfov=True)
-    if a.get('link'): extra_links.append(a['link'])
+    if a.get('link') and not hz: extra_links.append(a['link'])
     listings.append(a)
 
 # curățare + deduplicare în lot
@@ -431,6 +437,28 @@ for a in valid:
         continue
     by_key[k] = a; order.append(k)
 uniq = [by_key[k] for k in order]
+
+# HomeZZ, agenții: aceeași proprietate e de obicei și pe Storia/Imobiliare; dacă tipul, suprafața și prețul sunt identice cu un
+# anunț din altă sursă (din bază sau din rularea asta), nu-l mai salvăm (aplicația oricum numără dublurile o singură dată)
+def hz_ag(a): return a.get('sursa') == 'homezz' and a.get('vanzator') == 'companie'
+HZ_DUBLURI = 0
+if any(hz_ag(a) for a in uniq):
+    _k = lambda t, m, p: '%s|%d|%d' % (t, int(round(float(m))), int(round(float(p))))
+    _vazute = set()
+    for f in glob.glob(os.path.join(BASE, 'prev', 'capturi', '*.json')):
+        dd = load(f)
+        if isinstance(dd, dict) and isinstance(dd.get('data'), dict) and 'a' in dd['data']: dd = dd['data']
+        for x in ((dd or {}).get('a') or {}).values() if isinstance(dd, dict) else []:
+            try:
+                if isinstance(x, dict) and x.get('sursa') != 'homezz' and x.get('pret') and x.get('mp'): _vazute.add(_k(x.get('tip'), x['mp'], x['pret']))
+            except (TypeError, ValueError): pass
+    for a in uniq:
+        if a.get('sursa') != 'homezz' and a.get('pret') and a.get('mp'): _vazute.add(_k(a['tip'], a['mp'], a['pret']))
+    _u = []
+    for a in uniq:
+        if hz_ag(a) and _k(a['tip'], a['mp'], a['pret']) in _vazute: HZ_DUBLURI += 1; continue
+        _u.append(a)
+    uniq = _u
 
 if COUNT_ONLY:
     src = {}
@@ -514,7 +542,7 @@ def slim(a):
     return o
 groups = {}
 for a in uniq:
-    if a.get('zona'): groups.setdefault(a['zona'] + '__' + a['tip'], []).append(a)
+    if a.get('zona') and not hz_ag(a): groups.setdefault(a['zona'] + '__' + a['tip'], []).append(a)
 port_docs = 0
 for key, lst in sorted(groups.items()):
     zona, tip = key.split('__', 1)
@@ -591,9 +619,11 @@ writes.append(w)
 
 # ---------- stare ----------
 proc = list(procesate) + [m for m in per_msg if m not in procesate]
-chei = list(chei_vechi) + [cheie(a) for a in uniq if cheie(a) not in chei_vechi]
+chei = list(chei_vechi) + [cheie(a) for a in uniq if cheie(a) not in chei_vechi and not hz_ag(a)]
 linkuri = list(linkuri_vechi) + [l for l in extra_links if l not in linkuri_vechi]
 stare_doc = {'ultimaRulare': utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'procesate': proc[-STARE_MAX:], 'chei': chei[-STARE_MAX:], 'linkuri': linkuri[-3000:]}
+_hzs = load(os.path.join(BASE, 'homezz_stare.json')) or stare.get('homezz')       # cursorul citirii HomeZZ (nv_homezz.py)
+if isinstance(_hzs, dict) and _hzs: stare_doc['homezz'] = _hzs
 fp = os.path.join(out_dir, 'alerte', 'stare.json')
 with open(fp, 'w', encoding='utf-8') as f: json.dump(stare_doc, f, ensure_ascii=False)
 w = {'op': 'set', 'collection': 'alerte', 'doc_id': 'stare', 'file_path': fp}
@@ -601,14 +631,20 @@ if versions.get('alerte/stare'): w['if_version'] = versions['alerte/stare']
 elif stare: print('ATENȚIE: lipsește versiunea pentru alerte/stare')
 writes.append(w)
 
-batches = [writes[i:i + 50] for i in range(0, len(writes), 50)]
+# loturi de cel mult 50 de scrieri ȘI cel mult ~850 KB (limita bazei e 1 MiB pe cerere); „alerte/stare” rămâne ultima
+batches, _cur, _b = [], [], 0
+for w in writes:
+    sz = (os.path.getsize(w['file_path']) if os.path.exists(w['file_path']) else 0) + 200
+    if _cur and (len(_cur) >= 50 or _b + sz > 850 * 1024): batches.append(_cur); _cur, _b = [], 0
+    _cur.append(w); _b += sz
+if _cur: batches.append(_cur)
 with open(os.path.join(out_dir, 'writes.json'), 'w', encoding='utf-8') as f: json.dump(batches, f, ensure_ascii=False, indent=1)
 src = {}
 for a in uniq: src[a['sursa']] = src.get(a['sursa'], 0) + 1
 rez = {'mesaje_noi': len(per_msg), 'sarite': skipped, 'anunturi_unice': len(uniq), 'pe_surse': src, 'cu_zona': sum(1 for a in uniq if a.get('zona')),
        'fara_zona': sum(1 for a in uniq if not a.get('zona')), 'persoane': sum(1 for a in uniq if a.get('vanzator') == 'persoana'),
        'capturi': {'noi': cap_new, 'actualizate': cap_upd, 'sterse_vechi': cap_del, 'shard_uri': len(by_shard)}, 'portaluri_docs': port_docs,
-       'alerte_azi': len(al_items), 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
+       'alerte_azi': len(al_items), 'homezz_dubluri_sarite': HZ_DUBLURI, 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
 with open(os.path.join(out_dir, 'rezumat.json'), 'w', encoding='utf-8') as f: json.dump(rez, f, ensure_ascii=False, indent=1)
 print('Rezumat:', json.dumps(rez, ensure_ascii=False))
 print('Scrieri:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(out_dir, 'writes.json'))
