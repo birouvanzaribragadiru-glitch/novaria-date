@@ -35,6 +35,18 @@ CAP_N, CAP_GROUPS = 128, 32
 RET_CAPTURI_ZILE = 120      # anunțurile automate mai vechi de atât se scot din capturi (cele manuale nu se ating)
 RET_PORTAL_ZILE, PORTAL_MAX = 45, 40
 ALERTE_MAX, STARE_MAX = 300, 6000
+# alerte/stare trebuie să rămână sub limita unui document din bază (256 KB): cheile și linkurile se țin ca amprente
+# scurte (10 caractere hex din SHA-1), listele își păstrează ordinea (cele mai vechi primele) și, dacă tot nu încape,
+# se taie de la cele mai vechi până sub STARE_KB
+STARE_KB = 225
+def hk(s): return hashlib.sha1(str(s).encode('utf-8')).hexdigest()[:10]
+def amprente(lst):
+    out, vazute = [], set()
+    for x in lst or []:
+        if not isinstance(x, str) or not x: continue
+        h = x if re.fullmatch(r'[0-9a-f]{10}', x) else hk(x)      # intrările vechi (text întreg) devin amprente
+        if h not in vazute: vazute.add(h); out.append(h)
+    return out
 
 def load(p, d=None):
     try:
@@ -372,8 +384,10 @@ for f in sorted(glob.glob(os.path.join(BASE, 'mail', '*.json'))):
 
 stare = load(os.path.join(BASE, 'prev', 'alerte', 'stare.json'), {}) or {}
 if 'data' in stare and isinstance(stare['data'], dict) and 'procesate' in stare['data']: stare = stare['data']
-procesate = set(stare.get('procesate') or [])
-chei_vechi = set(stare.get('chei') or [])
+proc_lista = list(dict.fromkeys(x for x in (stare.get('procesate') or []) if isinstance(x, str)))   # ordinea se păstrează
+procesate = set(proc_lista)
+chei_lista = amprente(stare.get('chei'))
+chei_vechi = set(chei_lista)
 
 listings, per_msg, skipped = [], {}, {'procesate': 0, 'nerelevante': 0, 'olx': 0}
 for mid, m in sorted(messages.items(), key=lambda kv: ms_of(kv[1])):
@@ -400,12 +414,13 @@ for mid, m in sorted(messages.items(), key=lambda kv: ms_of(kv[1])):
     listings.extend(got)
 
 # anunțuri extrase altfel (Publi24 etc.), din DIR/extra.json
-linkuri_vechi = set(stare.get('linkuri') or [])
+link_lista = amprente(stare.get('linkuri'))
+linkuri_vechi = set(link_lista)
 extra_links = []
 for a in (load(os.path.join(BASE, 'extra.json'), []) or []):
     if not isinstance(a, dict) or not a.get('sursa'): continue
     hz = a.get('sursa') == 'homezz'
-    if a.get('link') and a['link'] in linkuri_vechi and not COUNT_ONLY and not hz: continue
+    if a.get('link') and hk(a['link']) in linkuri_vechi and not COUNT_ONLY and not hz: continue
     a.setdefault('tip', tip_from(a.get('titlu') or '') or 'apartament')
     a['titlu'] = str(a.get('titlu') or '')[:80]
     for k in ('pret', 'mp', 'teren'):
@@ -616,7 +631,7 @@ al_keys = {x.get('cheie') for x in al_items}
 for a in uniq:
     if a.get('vanzator') != 'persoana' or not a.get('zona') or a.get('faraAlerta'): continue     # faraAlerta: anunț mai vechi (HomeZZ), doar în comparabile
     s = slim(a); s['zona'] = a['zona']; s['tip'] = a['tip']
-    if s['cheie'] in al_keys or s['cheie'] in chei_vechi: continue
+    if s['cheie'] in al_keys or hk(s['cheie']) in chei_vechi: continue
     al_items.append({k: v for k, v in s.items() if v is not None}); al_keys.add(s['cheie'])
 al_items = al_items[-ALERTE_MAX:]
 doc = {'data': TODAY, 'actualizatLa': utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'anunturi': al_items}
@@ -628,9 +643,10 @@ elif prev_al: print('ATENȚIE: lipsește versiunea pentru alerte/' + TODAY)
 writes.append(w)
 
 # ---------- stare ----------
-proc = list(procesate) + [m for m in per_msg if m not in procesate]
-chei = list(chei_vechi) + [cheie(a) for a in uniq if cheie(a) not in chei_vechi and not hz_ag(a)]
-linkuri = list(linkuri_vechi) + [l for l in extra_links if l not in linkuri_vechi]
+proc = proc_lista + [m for m in per_msg if m not in procesate]
+# cheile servesc doar la alertele de proprietari (să nu reapară un anunț deja anunțat), deci se țin doar pentru persoane fizice
+chei = chei_lista + [h for h in dict.fromkeys(hk(cheie(a)) for a in uniq if a.get('vanzator') == 'persoana' and not hz_ag(a)) if h not in chei_vechi]
+linkuri = link_lista + [h for h in dict.fromkeys(hk(l) for l in extra_links) if h not in linkuri_vechi]
 stare_doc = {'ultimaRulare': utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'procesate': proc[-STARE_MAX:], 'chei': chei[-STARE_MAX:], 'linkuri': linkuri[-3000:]}
 _hzs = load(os.path.join(BASE, 'homezz_stare.json')) or stare.get('homezz')       # cursorul citirii HomeZZ (nv_homezz.py)
 if isinstance(_hzs, dict) and _hzs: stare_doc['homezz'] = _hzs
@@ -646,6 +662,14 @@ for src_k, cur in (('imobiliare', IMOB_PLINE), ('storia', PLINE)):
     _zi[src_k] = _pl(acc)[:20]
 if not COUNT_ONLY: _pline[TODAY] = _zi
 stare_doc['pline'] = {k: _pline[k] for k in sorted(_pline)[-7:]}
+def _kb(d): return len(json.dumps(d, ensure_ascii=False).encode('utf-8')) / 1024
+STARE_TAIAT = {}
+while _kb(stare_doc) > STARE_KB:
+    k = max(('procesate', 'chei', 'linkuri'), key=lambda k: _kb(stare_doc[k]))
+    n = max(1, len(stare_doc[k]) // 20)                # 5% din cele mai vechi, din lista cea mai mare
+    stare_doc[k] = stare_doc[k][n:]; STARE_TAIAT[k] = STARE_TAIAT.get(k, 0) + n
+STARE_MARIME = round(_kb(stare_doc), 1)
+if STARE_TAIAT: print('ATENȚIE: alerte/stare ar fi depășit %d KB; am scos cele mai vechi intrări: %s' % (STARE_KB, STARE_TAIAT))
 fp = os.path.join(out_dir, 'alerte', 'stare.json')
 with open(fp, 'w', encoding='utf-8') as f: json.dump(stare_doc, f, ensure_ascii=False)
 w = {'op': 'set', 'collection': 'alerte', 'doc_id': 'stare', 'file_path': fp}
@@ -666,7 +690,7 @@ for a in uniq: src[a['sursa']] = src.get(a['sursa'], 0) + 1
 rez = {'mesaje_noi': len(per_msg), 'sarite': skipped, 'anunturi_unice': len(uniq), 'pe_surse': src, 'cu_zona': sum(1 for a in uniq if a.get('zona')),
        'fara_zona': sum(1 for a in uniq if not a.get('zona')), 'persoane': sum(1 for a in uniq if a.get('vanzator') == 'persoana'),
        'capturi': {'noi': cap_new, 'actualizate': cap_upd, 'sterse_vechi': cap_del, 'shard_uri': len(by_shard)}, 'portaluri_docs': port_docs,
-       'alerte_azi': len(al_items), 'homezz_dubluri_sarite': HZ_DUBLURI, 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'imobiliare_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in IMOB_PLINE.items()), key=lambda r: -r[3])[:12], 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
+       'alerte_azi': len(al_items), 'homezz_dubluri_sarite': HZ_DUBLURI, 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'imobiliare_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in IMOB_PLINE.items()), key=lambda r: -r[3])[:12], 'stare_kb': STARE_MARIME, 'stare_taiat': STARE_TAIAT, 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
 with open(os.path.join(out_dir, 'rezumat.json'), 'w', encoding='utf-8') as f: json.dump(rez, f, ensure_ascii=False, indent=1)
 print('Rezumat:', json.dumps(rez, ensure_ascii=False))
 print('Scrieri:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(out_dir, 'writes.json'))
