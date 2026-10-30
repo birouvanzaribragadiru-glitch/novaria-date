@@ -271,6 +271,13 @@ def parse_imobiliare(msg):
 
 HIDDEN = {'storia': 0, 'imobiliare': 0, 'emailuri_cu_ascunse': 0}
 PLINE = {}
+# Imobiliare.ro: e-mailul arată cel mult 8 anunțuri, subiectul spune câte sunt („15 anunțuri noi pentru: …”);
+# restul se pierd, deci căutările care depășesc trebuie împărțite mai fin (preț, suprafață) sau lăsate „din oră în oră”
+IMOB_PLINE = {}
+def imob_cautare(subj):
+    k = re.sub(r'^\s*\d+\s+anun\S*\s+no\S*\s+pentru:\s*', '', subj or '', flags=re.I)
+    k = re.sub(r'\s+-\s+\d{1,2}\b.*$', '', re.sub(r'\s+', ' ', k)).strip(' ,-…')   # „… București - 21 octombrie 11:02”, „… Sector 4,…”
+    return k[:70]
 def parse_storia(msg):
     body = msg.get('plaintextBody') or ''
     mh = re.search(r'Verific[ăa]\s+restul.*?(\d+)\s*anun', body, re.S)
@@ -379,7 +386,10 @@ for mid, m in sorted(messages.items(), key=lambda kv: ms_of(kv[1])):
     for a in got: a['oferta'] = of
     if kind == 'imobiliare':
         mh = re.match(r'\s*(\d+)\s+anun', m.get('subject') or '')
-        if mh and int(mh.group(1)) > len(got): HIDDEN['imobiliare'] += int(mh.group(1)) - len(got); HIDDEN['emailuri_cu_ascunse'] += 1
+        if mh and int(mh.group(1)) > len(got):
+            HIDDEN['imobiliare'] += int(mh.group(1)) - len(got); HIDDEN['emailuri_cu_ascunse'] += 1
+            e = IMOB_PLINE.setdefault(imob_cautare(m.get('subject')), {'max': 0, 'emailuri': 0, 'ascunse': 0})
+            e['max'] = max(e['max'], int(mh.group(1))); e['emailuri'] += 1; e['ascunse'] += int(mh.group(1)) - len(got)
     t = ms_of(m)
     gars = bool(re.search(r'garsonier', norm(m.get('subject') or '')))
     for a in got:
@@ -624,6 +634,18 @@ linkuri = list(linkuri_vechi) + [l for l in extra_links if l not in linkuri_vech
 stare_doc = {'ultimaRulare': utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'), 'procesate': proc[-STARE_MAX:], 'chei': chei[-STARE_MAX:], 'linkuri': linkuri[-3000:]}
 _hzs = load(os.path.join(BASE, 'homezz_stare.json')) or stare.get('homezz')       # cursorul citirii HomeZZ (nv_homezz.py)
 if isinstance(_hzs, dict) and _hzs: stare_doc['homezz'] = _hzs
+# căutările „pline” (anunțuri care n-au încăput în e-mail), pe zile, ultimele 7 zile: [căutare, max, e-mailuri, pierdute]
+def _pl(d): return sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in d.items()), key=lambda r: -r[3])
+_pline = {k: v for k, v in (stare.get('pline') or {}).items() if isinstance(v, dict)} if isinstance(stare.get('pline'), dict) else {}
+_zi = _pline.get(TODAY) or {}
+for src_k, cur in (('imobiliare', IMOB_PLINE), ('storia', PLINE)):
+    acc = {r[0]: {'max': r[1], 'emailuri': r[2], 'ascunse': r[3]} for r in (_zi.get(src_k) or []) if isinstance(r, list) and len(r) == 4}
+    for k, v in cur.items():
+        e = acc.setdefault(k, {'max': 0, 'emailuri': 0, 'ascunse': 0})
+        e['max'] = max(e['max'], v['max']); e['emailuri'] += v['emailuri']; e['ascunse'] += v['ascunse']
+    _zi[src_k] = _pl(acc)[:20]
+if not COUNT_ONLY: _pline[TODAY] = _zi
+stare_doc['pline'] = {k: _pline[k] for k in sorted(_pline)[-7:]}
 fp = os.path.join(out_dir, 'alerte', 'stare.json')
 with open(fp, 'w', encoding='utf-8') as f: json.dump(stare_doc, f, ensure_ascii=False)
 w = {'op': 'set', 'collection': 'alerte', 'doc_id': 'stare', 'file_path': fp}
@@ -644,7 +666,7 @@ for a in uniq: src[a['sursa']] = src.get(a['sursa'], 0) + 1
 rez = {'mesaje_noi': len(per_msg), 'sarite': skipped, 'anunturi_unice': len(uniq), 'pe_surse': src, 'cu_zona': sum(1 for a in uniq if a.get('zona')),
        'fara_zona': sum(1 for a in uniq if not a.get('zona')), 'persoane': sum(1 for a in uniq if a.get('vanzator') == 'persoana'),
        'capturi': {'noi': cap_new, 'actualizate': cap_upd, 'sterse_vechi': cap_del, 'shard_uri': len(by_shard)}, 'portaluri_docs': port_docs,
-       'alerte_azi': len(al_items), 'homezz_dubluri_sarite': HZ_DUBLURI, 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
+       'alerte_azi': len(al_items), 'homezz_dubluri_sarite': HZ_DUBLURI, 'chirii': {'anunturi': chirii_n, 'docs': chirii_docs, 'brute': len(chirii_brute)}, 'neincapute_in_email': HIDDEN, 'storia_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in PLINE.items()), key=lambda r: -r[3])[:12], 'imobiliare_pline': sorted(([k, v['max'], v['emailuri'], v['ascunse']] for k, v in IMOB_PLINE.items()), key=lambda r: -r[3])[:12], 'scrieri': len(writes), 'loturi': len(batches), 'nemapate_top': sorted(UNMAPPED.items(), key=lambda kv: -kv[1])[:15]}
 with open(os.path.join(out_dir, 'rezumat.json'), 'w', encoding='utf-8') as f: json.dump(rez, f, ensure_ascii=False, indent=1)
 print('Rezumat:', json.dumps(rez, ensure_ascii=False))
 print('Scrieri:', len(writes), 'în', len(batches), 'loturi ->', os.path.join(out_dir, 'writes.json'))
