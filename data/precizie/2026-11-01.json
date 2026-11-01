@@ -7,23 +7,23 @@
   "comparabile": {
    "n": 3176,
    "bias": 1.014,
-   "eroare_mediana": 0.157,
+   "eroare_mediana": 0.156,
    "in10": 0.354,
    "in20": 0.602
   },
   "media_zonei": {
    "n": 3589,
-   "bias": 1.047,
+   "bias": 1.048,
    "eroare_mediana": 0.191,
    "in10": 0.298,
-   "in20": 0.516
+   "in20": 0.515
   },
   "reper_naiv": {
    "n": 3551,
-   "bias": 0.995,
-   "eroare_mediana": 0.161,
-   "in10": 0.334,
-   "in20": 0.586
+   "bias": 0.997,
+   "eroare_mediana": 0.162,
+   "in10": 0.332,
+   "in20": 0.585
   }
  },
  "casa": {
@@ -31,13 +31,13 @@
    "n": 2979,
    "bias": 1.093,
    "eroare_mediana": 0.214,
-   "in10": 0.28,
+   "in10": 0.281,
    "in20": 0.486
   },
   "media_zonei": {
    "n": 3419,
    "bias": 0.667,
-   "eroare_mediana": 0.205,
+   "eroare_mediana": 0.377,
    "in10": 0.051,
    "in20": 0.101
   },
@@ -45,7 +45,7 @@
    "n": 3341,
    "bias": 1.002,
    "eroare_mediana": 0.231,
-   "in10": 0.269,
+   "in10": 0.271,
    "in20": 0.446
   }
  },
@@ -92,7 +92,7 @@
    "zona": "dacia",
    "tip": "apartament",
    "n": 29,
-   "eroare_mediana": 0.499,
+   "eroare_mediana": 0.498,
    "in10": 0.207
   },
   {
