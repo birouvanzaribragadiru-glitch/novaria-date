@@ -20,6 +20,7 @@ Baza fiecărei aplicații are aceleași reguli de acces (`docs/app-capabilities.
 5. Arhivează sursele (opțiunile `--exclude` ÎNAINTE de `-C`, altfel tar le ignoră și arhiva iese ~30 MB): `tar czf - --exclude=cma/node_modules --exclude='cma/app_v*' --exclude='cma/*.html' --exclude=cma/test_srv --exclude=cma/harta --exclude='cma/test/realdata*.json' -C /home/claude cma | NV_BACKUP_KEY=… openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:NV_BACKUP_KEY -out app/src-AAAA-LL-ZZ.tar.gz.enc` (aceeași cheie ca backup-ul).
 
 ## Task-uri programate legate de aplicații
+- 1.11.2026: pe 31.10 ambele rulări ale alertelor și, duminică dimineață, copia de siguranță și paznicul au picat cu „cotă de utilizare atinsă” (cota contului e comună cu sesiunile de lucru și cu alte task-uri). Măsuri: paznicul pe claude-haiku-5-5, copia de siguranță pe claude-sonnet-5-5 și de două ori pe săptămână (duminică și miercuri 04:13), task nou „raport zilnic de sănătate” (21:58, haiku, doar citire; `docs/task-sanatate-prompt.md`), testul de precizie în exportul zilnic (pasul 3d). Task-urile BTC din alt proiect au fost șterse la cererea lui Lucian.
 - „date zilnice pentru evaluatorul de pe site” (21:37) — export + calibrare; citește și vânzările agenților din `agenti/*/tranzactii` (principală și Parteneri).
 - „alimentare Parteneri” (22:17) — `docs/task-feed-prompt.md`.
 - „paznicul aplicațiilor” (06:23, 15:23) — `docs/task-paznic-prompt.md`: compară amprenta paginilor live cu copia bună și restaurează.
