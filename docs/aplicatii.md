@@ -100,3 +100,7 @@ Portalurile (mai ales Storia) umplu paginile cu „alte anunțuri” din toată 
 - „Haos cu agenții” rămâne: proprietarii care au și un geamăn identic la agenție (fără alte semnale) se văd acolo.
 - Măsurat pe date reale (test/ag_hide_test.js): Găsite 585 din 694 (109 ascunse), Alerte noi 134 din 144 (10 ascunse), Toate 776 din 795, Haos cu agenții 9.
 - Sursele aplicației: `app/src-2026-10-30-v70.tar.gz.enc` (aceeași cheie ca backup-ul; fără `harta/`, care stă în fișierele publicate ale artefactului, și fără `test/realdata*.json`, date reale de test).
+
+## Testul zilnic de precizie (1 nov. 2026)
+- `scripts/precizie.js <dump> data/precizie`: fiecare anunț din `capturi` e evaluat ca „proprietatea de evaluat” cu comparabile alese automat din aceeași zonă și același tip (fără el și fără cele cu același preț cerut), apoi comparat cu prețul cerut. Scrie doar cifre agregate: `data/precizie/<data>.json`, `ultimul.json` și `serie.json` (un rând pe zi, pentru panou). Rulează în task-ul de export (pasul 3d) și se urcă odată cu datele.
+- Prima măsurătoare (1.11.2026, 7.012 anunțuri): apartamente eroare mediană 15,7% (35% în ±10%), case 21,4% (28% în ±10%); reperul naiv „mediana zonei × mp” dă 16,1% la apartamente. Cauza: anunțurile n-au atribute (an 0,7%, stare ~0%). Exemplu de ce mai strică măsurătoarea și datele: 15 anunțuri identice „Vila Cub … Bragadiru strada Preciziei” (dezvoltator care repostează zilnic, fiecare repostare cu alt id Storia), mapate pe zona „pacii” (Sector 6) din cauza străzii, deși sunt în Bragadiru.
