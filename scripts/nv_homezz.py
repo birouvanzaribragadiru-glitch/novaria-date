@@ -142,13 +142,15 @@ def descarca(url, dest):
 
 rap = {k: 0 for k in ('cereri', 'pagini', 'vazute', 'fara_filtru', 'fara_link', 'inchirieri', 'alt_judet', 'incomplete', 'vechi')}
 treceri = {'proprietari': 0, 'agentii_noi': 0, 'agentii_tura': 0}
-blocat, toate = None, {}
+blocat, toate, ultim_cod = None, {}, None
 stare = load(os.path.join(BASE, 'prev', 'alerte', 'stare.json'), {}) or {}
 if isinstance(stare.get('data'), dict) and 'procesate' in stare['data']: stare = stare['data']
 hzs = stare.get('homezz') if isinstance(stare.get('homezz'), dict) else {}
 cur = hzs.get('cursor') if isinstance(hzs.get('cursor'), dict) else {}
 ci = cur.get('cat', 0) if isinstance(cur.get('cat'), int) and 0 <= cur.get('cat', 0) < len(CAT) else 0
 cp = cur.get('pagina', 2) if isinstance(cur.get('pagina'), int) and cur.get('pagina', 2) >= 2 else 2   # prima pagină sortată după preț trimite la prima pagină a site-ului (302); o acoperă trecerea B
+# sortarea turei: „price_asc” (ordine stabilă). Dacă site-ul răspunde 302 chiar de la pagina 2, tura trece pe „date_desc” pentru categoria aceea
+tsort = cur.get('sort') if cur.get('sort') in ('price_asc', 'date_desc') else 'price_asc'
 totaluri = dict(hzs.get('totaluri') or {})
 ture = int(hzs.get('ture') or 0)
 
@@ -158,11 +160,11 @@ def adauga(lst, trecere):
 
 def pagina(slug, tip, vz, sort, p):
     """descarcă și citește o pagină; întoarce (anunțuri, total_pagini) sau None la blocare (și setează `blocat`)"""
-    global blocat
+    global blocat, ultim_cod
     url = BAZA % (slug, vz, sort) + ('&page=%d' % p if p > 1 else '')
     dest = os.path.join(BASE, 'hz', '%s-%s-%s-%d.html' % (slug, vz[:4], sort[:5], p))
     if rap['cereri']: time.sleep(PAUZA)
-    cod, err = descarca(url, dest); rap['cereri'] += 1
+    cod, err = descarca(url, dest); rap['cereri'] += 1; ultim_cod = cod
     text = open(dest, encoding='utf-8', errors='replace').read() if os.path.exists(dest) else ''
     try: os.remove(dest)                         # nu păstrăm paginile descărcate
     except OSError: pass
@@ -215,13 +217,24 @@ else:
             if ci >= len(CAT): ci, ture = 0, ture + 1
             continue
         sarite = 0
-        r = pagina(slug, tip, 'companie', 'price_asc', cp)
-        if not r: break
+        r = pagina(slug, tip, 'companie', tsort, cp)
+        if not r:
+            # 302 (redirecționare la prima pagină a site-ului) nu e blocaj: HomeZZ îl dă când pagina cerută nu mai există
+            # pentru sortarea aceea (1.11.2026: apartamente, pagina 135, deși categoria are mai multe pagini la „cele mai noi”).
+            if ultim_cod == '302' and cp > 2:
+                blocat = None; rap['tura_302'] = rap.get('tura_302', 0) + 1
+                ci, cp = ci + 1, 2
+                if ci >= len(CAT): ci, ture = 0, ture + 1
+                continue
+            if ultim_cod == '302' and tsort == 'price_asc':
+                blocat = None; tsort = 'date_desc'; rap['tura_302'] = rap.get('tura_302', 0) + 1
+                continue
+            break
         adauga(r[0], 'agentii_tura'); totaluri[slug] = r[1]
         cp += 1
         if cp > r[1]:
             ci, cp = ci + 1, 2
-            if ci >= len(CAT): ci, ture = 0, ture + 1
+            if ci >= len(CAT): ci, ture, tsort = 0, ture + 1, 'price_asc'     # tură nouă: încercăm iar ordinea stabilă
 
 lista = list(toate.values())
 ex_path = os.path.join(BASE, 'extra.json')
@@ -230,14 +243,14 @@ if not isinstance(ex, list): ex = []
 ex = [a for a in ex if not (isinstance(a, dict) and a.get('sursa') == 'homezz')] + lista
 with open(ex_path, 'w', encoding='utf-8') as f: json.dump(ex, f, ensure_ascii=False)
 if not DIN:
-    hzs = {'cursor': {'cat': ci, 'pagina': cp}, 'totaluri': totaluri, 'ture': ture, 'ultima': NOW.strftime('%Y-%m-%dT%H:%M:%SZ')}
+    hzs = {'cursor': {'cat': ci, 'pagina': cp, 'sort': tsort}, 'totaluri': totaluri, 'ture': ture, 'ultima': NOW.strftime('%Y-%m-%dT%H:%M:%SZ')}
     if blocat: hzs['blocat'] = blocat[:160]
     with open(os.path.join(BASE, 'homezz_stare.json'), 'w', encoding='utf-8') as f: json.dump(hzs, f, ensure_ascii=False)
 tot_pag = sum(int(v) for v in totaluri.values()) if totaluri else None
 rez = {'homezz': {'anunturi': len(lista), 'proprietari': sum(1 for a in lista if a['vanzator'] == 'persoana'),
                   'agentii': sum(1 for a in lista if a['vanzator'] == 'companie'),
                   'pentru_alerte': sum(1 for a in lista if not a.get('faraAlerta')), 'treceri': treceri,
-                  'tura': {'categorie': CAT[ci][0], 'pagina': cp, 'din': totaluri.get(CAT[ci][0]), 'ture_complete': ture, 'pagini_agentii': tot_pag},
+                  'tura': {'categorie': CAT[ci][0], 'pagina': cp, 'sort': tsort, 'din': totaluri.get(CAT[ci][0]), 'ture_complete': ture, 'pagini_agentii': tot_pag},
                   'secunde': round(time.time() - T0), 'pe_tip': {t: sum(1 for a in lista if a['tip'] == t) for t in ('apartament', 'casa', 'teren')}, 'blocat': blocat, **rap}}
 with open(os.path.join(BASE, 'homezz_rezumat.json'), 'w', encoding='utf-8') as f: json.dump(rez, f, ensure_ascii=False)
 print(json.dumps(rez, ensure_ascii=False))
