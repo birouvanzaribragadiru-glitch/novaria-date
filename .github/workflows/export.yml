@@ -1,0 +1,32 @@
+# Datele publice pentru evaluatorul de pe novaria.ro: în fiecare noapte, după ce serverul Novaria și-a recalculat valorile (23:40 România),
+# luăm exportul agregat de la server și îl punem în depozit (data/evaluator.json + copia din plugin), ca până acum.
+# Doar cifre agregate pe zone; scriptul se oprește dacă răspunsul nu arată ca un export valid.
+name: Date piață (de la server)
+on:
+  schedule:
+    - cron: '35 22 * * *'      # 00:35 România (iarna)
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ia exportul de la server
+        run: |
+          curl -fsS --retry 3 "https://novaria-server.mindonsteroids.workers.dev/api/public/evaluator.json" -o /tmp/evaluator.json
+          node -e "const d=require('/tmp/evaluator.json'); if(d.v!==1||!Array.isArray(d.zone)||d.zone.length<100||!d.anunturi) {console.error('export nevalid'); process.exit(1)}; const t=JSON.stringify(d); if(/https?:\/\/|www\.|@[a-z0-9-]+\.[a-z]{2,}|(?:\+?40|0)7\d{8}/i.test(t)) {console.error('conține link/email/telefon'); process.exit(1)}; console.log(d.anunturi,'anunțuri ·',d.zone.length,'zone · actualizat',d.actualizat)"
+      - name: Scrie în depozit dacă s-a schimbat ceva în afară de dată
+        run: |
+          node -e "
+            const fs=require('fs'); const n=JSON.parse(fs.readFileSync('/tmp/evaluator.json','utf8'));
+            let same=false; try { const o=JSON.parse(fs.readFileSync('data/evaluator.json','utf8')); const s=x=>JSON.stringify(Object.assign({},x,{actualizat:null})); same = s(o)===s(n); } catch(e) {}
+            if (same) { console.log('NESCHIMBAT'); process.exit(0); }
+            const txt=JSON.stringify(n)+'\n'; fs.writeFileSync('data/evaluator.json',txt); fs.writeFileSync('plugin/novaria-evaluator/data/evaluator.json',txt); console.log('SCRIS');
+          "
+          if git diff --quiet; then echo "nimic de urcat"; exit 0; fi
+          git config user.name "novaria-bot"; git config user.email "actions@users.noreply.github.com"
+          git add data/evaluator.json plugin/novaria-evaluator/data/evaluator.json
+          git commit -m "Date piață $(date -u +%Y-%m-%d) (de la server)"
+          git push
