@@ -40,6 +40,22 @@ def norm(s):
     s = unicodedata.normalize('NFKD', str(s or '')).encode('ascii', 'ignore').decode().lower()
     return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9 ]+', ' ', s)).strip()
 
+GENERICE = {'apartament', 'apartamente', 'garsoniera', 'camere', 'camera', 'cam', 'vanzare', 'vand', 'vinde', 'vindem', 'inchiriat', 'inchiriere', 'casa', 'vila',
+            'teren', 'bucuresti', 'sector', 'sectorul', 'ilfov', 'proprietar', 'direct', 'zona', 'metrou', 'bloc', 'nou', 'noua', 'mobilat', 'utilat', 'etaj', 'decomandat', 'semidecomandat',
+            'renovat', 'comision', 'oferta', 'pret', 'super', 'ocazie', 'ideal', 'investitie', 'parcare', 'loc', 'curte', 'gradina', 'duplex', 'parter', 'central', 'centrala'}
+def slug_potrivit(url, titlu):
+    # Paginile de listă HomeZZ servesc uneori, pe același id/url, titlul+prețul+atributele altui anunț (vecinul din listă), iar
+    # alinierea se schimbă de la o cerere la alta (1.11.2026). Slug-ul e făcut din titlu la publicare: dacă titlul nu seamănă cu
+    # slug-ul, blocul nu e al anunțului și îl sărim. Potrivire: jumătate din cuvintele slug-ului (3+ litere) apar în titlu.
+    m = re.search(r'homezz\.ro/([a-z0-9-]+)-\d{5,}\.html$', str(url or ''))
+    if not m: return False
+    toate = [w for w in m.group(1).split('-') if len(w) > 2]
+    if not toate: return False
+    in_titlu = {w for w in norm(titlu).split(' ') if len(w) > 2}
+    specifice = [w for w in toate if w not in GENERICE]
+    cuv = specifice or toate        # cuvintele care identifică anunțul (nu „apartament 2 camere”)
+    return sum(1 for w in cuv if w in in_titlu) / len(cuv) >= 0.5
+
 def load(p, dflt=None):
     try:
         with open(p, encoding='utf-8') as f: return json.load(f)
@@ -104,6 +120,7 @@ def anunturi_din(d, tip, rap):
         rap['vazute'] += 1
         hid, url, titlu = x.get('id'), x.get('url') or '', str(x.get('title') or '').strip()
         if not hid or not re.match(r'^https://homezz\.ro/[a-z0-9-]+-\d{5,}\.html$', url): rap['fara_link'] += 1; continue
+        if not slug_potrivit(url, titlu): rap['nepotrivite'] = rap.get('nepotrivite', 0) + 1; continue   # conținut străin lipit pe acest id
         tn = norm(titlu)
         if re.search(r'inchiri|de inchiriat|chirie', tn): rap['inchirieri'] += 1; continue
         if re.search(ALTE_JUDETE, tn): rap['alt_judet'] += 1; continue
@@ -132,7 +149,14 @@ def anunturi_din(d, tip, rap):
              'venitLa': venit.strftime('%Y-%m-%dT%H:%M:%SZ')}
         if vz != 'persoana' or z is None or z > ALERTA_ZILE: a['faraAlerta'] = True   # în comparabile (și la proprietari în „Găsite”), nu în alertele de azi
         out.append({k: v for k, v in a.items() if v is not None})
-    return out
+    # al doilea simptom al defecțiunii HomeZZ: blocul unui vecin (slug + titlu + preț) copiat pe alt id; nu știm care id e cel
+    # adevărat, deci sărim toate aparițiile unui bloc identic (anunțul real reapare la o rulare următoare)
+    cheie = lambda a: norm(a.get('titlu')) + '|' + str(a.get('pret')) + '|' + re.sub(r'-\d{5,}\.html$', '', a.get('link') or '')
+    aparitii = {}
+    for a in out: aparitii[cheie(a)] = aparitii.get(cheie(a), 0) + 1
+    curate = [a for a in out if aparitii[cheie(a)] == 1]
+    rap['dubluri_pagina'] = rap.get('dubluri_pagina', 0) + len(out) - len(curate)
+    return curate
 
 def descarca(url, dest):
     r = subprocess.run(['curl', '-sS', '--compressed', '--max-time', '45', '-A', UA, '-H', 'Accept-Language: ro-RO,ro;q=0.9',
@@ -140,7 +164,7 @@ def descarca(url, dest):
     cod = (r.stdout or '').strip()[-3:]
     return cod, (r.stderr or '').strip()[:200]
 
-rap = {k: 0 for k in ('cereri', 'pagini', 'vazute', 'fara_filtru', 'fara_link', 'inchirieri', 'alt_judet', 'incomplete', 'vechi')}
+rap = {k: 0 for k in ('cereri', 'pagini', 'vazute', 'fara_filtru', 'fara_link', 'nepotrivite', 'dubluri_pagina', 'inchirieri', 'alt_judet', 'incomplete', 'vechi')}
 treceri = {'proprietari': 0, 'agentii_noi': 0, 'agentii_tura': 0}
 blocat, toate, ultim_cod = None, {}, None
 stare = load(os.path.join(BASE, 'prev', 'alerte', 'stare.json'), {}) or {}
@@ -194,7 +218,9 @@ else:
         p = 1
         while not blocat and rap['cereri'] < MAX_PROPR:
             r = pagina(slug, tip, 'persoana_fizica', 'date_desc', p)
-            if not r: break
+            if not r:
+                if ultim_cod == '302': blocat = None; rap['tura_302'] = rap.get('tura_302', 0) + 1   # 302 = pagina nu există pentru sortarea asta, nu blocaj
+                break
             adauga(r[0], 'proprietari')
             if p >= r[1]: break
             p += 1
@@ -205,7 +231,9 @@ else:
         for p in range(1, NOI_AG[slug] + 1):
             if rap['cereri'] >= MAX_CERERI or not timp_ok(): break
             r = pagina(slug, tip, 'companie', 'date_desc', p)
-            if not r: break
+            if not r:
+                if ultim_cod == '302': blocat = None; rap['tura_302'] = rap.get('tura_302', 0) + 1   # 1.11.2026: companie + date_desc + page=3 dă 302
+                break
             adauga(r[0], 'agentii_noi'); totaluri[slug] = r[1]
             if p >= r[1]: break
     # C. agențiile, tura completă după preț, de unde a rămas rularea trecută
