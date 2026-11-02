@@ -22,3 +22,56 @@
 **De șters după ce cele noi primesc e-mailuri (căutările largi înlocuite):** Apartamente S4 și S3 piață primară (toate camerele), S4 2 cam. 100k+/80–100k/<80k, S4 3 cam. 120k+/<120k, S4 1 cam., S3 3 cam., S3 2 cam. (3 benzi), S3 1 cam., S1 2/3/4-5 cam., S2 2/3 cam., S5 și S6 piață primară, S5 2 cam. 95k+, S6 2 cam. 100k+, S6 1 cam., Ilfov 1/2/3 cam. piață secundară și primară, Case Berceni, Case Ilfov (4 benzi), Case S3, Chirii S4/S6/S5, Terenuri Ilfov (3 benzi).
 
 **Cum se verifică:** pagina `storia.ro/ro/salvat/cautari` (date în `__NEXT_DATA__.props.pageProps.savedSearchesData`: `newAdsCount` de la `lastVisitTime`) și, în server, `emailuri.pierdute` pe căutare. Dacă o bandă depășește 5/zi, se mai împarte (preț sau suprafață `areaMin`/`areaMax`).
+
+## Verificare 2 nov. 2026, 12:20 (după prima rundă de e-mailuri)
+
+- Contul are **280 de căutări**: 112 vechi + 168 noi (din cele 169 create pe 1.11 lipsește una: „Chirie S4 4cam 900-None”; de recreat când e la îndemână).
+- Benzile noi **trimit e-mailuri**: azi au venit 36 de e-mailuri Storia (ieri 29, alaltăieri 29) cu doar 15 subiecte distincte — mai multe e-mailuri pe același subiect (de ex. 7 pentru „Sectorul 4, Apartamente de vânzare, case deja locuite”, 6 pentru „…case noi”) înseamnă căutări separate pe aceeași zonă, adică benzile. Subiectul e-mailului nu conține numele căutării, deci nu se poate separa banda de căutarea largă după subiect.
+- Încă se pierd anunțuri din cauza căutărilor largi vechi: azi `pierdute` = 79 (în subiect 168, în e-mail 89). Dispar după ștergerea celor de mai jos.
+- **Ștergerea nu s-a putut face automat** (sesiunea fără Lucian nu are voie să șteargă din contul lui). Lista exactă, cum apare pe `storia.ro/ro/salvat/cautari` (cele vechi sunt pe paginile 5–8, după cele 168 noi), 41 de căutări:
+
+| # | Card (titlu) | Rândul de sub titlu | De ce |
+|---|---|---|---|
+| 1 | De vânzare/Terenuri, Ilfov | Preț de la 150000 € | Teren Ilfov → 7 benzi noi |
+| 2 | De vânzare/Terenuri, Ilfov | Preț de la 60000 € până la 150000 € | idem |
+| 3 | De vânzare/Terenuri, Ilfov | Preț până la 60000 € | idem |
+| 4 | De vânzare/Case, Sectorul 3, Bucuresti | (fără filtre) | Case S3 → 2 benzi noi |
+| 5 | De vânzare/Apartamente, Ilfov | Camere: 3, Piața primară | Ilfov P → 16 benzi noi |
+| 6 | De vânzare/Apartamente, Ilfov | Camere: 2, Piața primară | idem |
+| 7 | De vânzare/Apartamente, Ilfov | Camere: 1, Piața primară | idem |
+| 8 | De vânzare/Apartamente, Ilfov | Camere: 3, Piața secundară | Ilfov S → 15 benzi noi |
+| 9 | De vânzare/Apartamente, Ilfov | Camere: 2, Piața secundară | idem |
+| 10 | De vânzare/Apartamente, Ilfov | Camere: 1, Piața secundară | idem |
+| 11 | De vânzare/Apartamente, Sectorul 6, Bucuresti | Piața primară | S6 P → 4 benzi |
+| 12 | De vânzare/Apartamente, Sectorul 5, Bucuresti | Piața primară | S5 P → 4 benzi |
+| 13 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Piața primară | S4 P → 9 benzi |
+| 14 | De vânzare/Apartamente, Sectorul 3, Bucuresti | Piața primară | S3 P → 9 benzi |
+| 15 | De vânzare/Apartamente, Sectorul 2, Bucuresti | Camere: 3, Piața secundară | S2 S → 9 benzi |
+| 16 | De vânzare/Apartamente, Sectorul 2, Bucuresti | Camere: 2, Piața secundară | idem |
+| 17 | De vânzare/Apartamente, Sectorul 1, Bucuresti | Camere: 4, 5, Piața secundară | S1 S → 10 benzi |
+| 18 | De vânzare/Apartamente, Sectorul 1, Bucuresti | Camere: 3, Piața secundară | idem |
+| 19 | De vânzare/Apartamente, Sectorul 1, Bucuresti | Camere: 2, Piața secundară | idem |
+| 20 | De vânzare/Apartamente, Sectorul 3, Bucuresti | Camere: 3, Piața secundară | S3 S → 15 benzi |
+| 21 | De vânzare/Apartamente, Sectorul 3, Bucuresti | Preț de la 150000 €, Camere: 2, Piața secundară | idem |
+| 22 | De vânzare/Apartamente, Sectorul 3, Bucuresti | Preț de la 115000 € până la 150000 €, Camere: 2, Piața secundară | idem |
+| 23 | De vânzare/Apartamente, Sectorul 3, Bucuresti | Preț până la 115000 €, Camere: 2, Piața secundară | idem |
+| 24 | De vânzare/Apartamente, Sectorul 3, Bucuresti | Camere: 1, Piața secundară | idem |
+| 25 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Preț de la 120000 €, Camere: 3, Piața secundară | S4 S → 22 benzi |
+| 26 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Preț până la 120000 €, Camere: 3, Piața secundară | idem |
+| 27 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Preț de la 100000 €, Camere: 2, Piața secundară | idem |
+| 28 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Preț de la 80000 € până la 100000 €, Camere: 2, Piața secundară | idem |
+| 29 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Preț până la 80000 €, Camere: 2, Piața secundară | idem |
+| 30 | De vânzare/Apartamente, Sectorul 4, Bucuresti | Camere: 1, Piața secundară | idem |
+| 31 | De vânzare/Apartamente, Sectorul 6, Bucuresti | Preț de la 100000 €, Camere: 2, Piața secundară | S6 S → 4 benzi (100k+ și 1 cam.) |
+| 32 | De vânzare/Apartamente, Sectorul 6, Bucuresti | Camere: 1, Piața secundară | idem |
+| 33 | De vânzare/Apartamente, Sectorul 5, Bucuresti | Preț de la 95000 €, Camere: 2, Piața secundară | S5 S → 2 benzi (95k+) |
+| 34 | De închiriat/Apartamente, Sectorul 6, Bucuresti | (fără filtre) | Chirie S6 → 8 benzi |
+| 35 | De închiriat/Apartamente, Sectorul 5, Bucuresti | (fără filtre) | Chirie S5 → 4 benzi |
+| 36 | De închiriat/Apartamente, Sectorul 4, Bucuresti | (fără filtre) | Chirie S4 → 7 benzi (+1 de recreat) |
+| 37 | De vânzare/Case, Ilfov | Preț de la 300000 € | Case Ilfov → 20 benzi |
+| 38 | De vânzare/Case, Ilfov | Preț de la 220000 € până la 300000 € | idem |
+| 39 | De vânzare/Case, Ilfov | Preț de la 150000 € până la 220000 € | idem |
+| 40 | De vânzare/Case, Ilfov | Preț până la 150000 € | idem |
+| 41 | De vânzare/Case, Berceni, Ilfov | (fără filtre) | acoperită de benzile Case Ilfov |
+
+**Rămân** (nu se șterg): căutările pe localități (Bragadiru, Chiajna, Domnești, Clinceni, Cornetu, Măgurele, Jilava, Popești, Voluntari, Otopeni, Pantelimon, Berceni apartamente), cele „proprietar” (own:PRIVATE), S1 1 cam., S2 1 cam. și 4–5 cam., S3/S4/S5/S6 4–5 cam., S5 2 cam. <95k, S6 2 cam. <100k, S5/S6 3 cam. (ambele benzi), Case S1/S2/S4/S5/S6, chirii case Ilfov și pe localități, terenuri pe localități.
