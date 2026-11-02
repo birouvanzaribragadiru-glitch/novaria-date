@@ -28,7 +28,7 @@
 - Contul are **280 de căutări**: 112 vechi + 168 noi (din cele 169 create pe 1.11 lipsește una: „Chirie S4 4cam 900-None”; de recreat când e la îndemână).
 - Benzile noi **trimit e-mailuri**: azi au venit 36 de e-mailuri Storia (ieri 29, alaltăieri 29) cu doar 15 subiecte distincte — mai multe e-mailuri pe același subiect (de ex. 7 pentru „Sectorul 4, Apartamente de vânzare, case deja locuite”, 6 pentru „…case noi”) înseamnă căutări separate pe aceeași zonă, adică benzile. Subiectul e-mailului nu conține numele căutării, deci nu se poate separa banda de căutarea largă după subiect.
 - Încă se pierd anunțuri din cauza căutărilor largi vechi: azi `pierdute` = 79 (în subiect 168, în e-mail 89). Dispar după ștergerea celor de mai jos.
-- **Ștergerea nu s-a putut face automat** (sesiunea fără Lucian nu are voie să șteargă din contul lui). Lista exactă, cum apare pe `storia.ro/ro/salvat/cautari` (cele vechi sunt pe paginile 5–8, după cele 168 noi), 41 de căutări:
+- **Șterse pe 2 nov. 2026, 17:30, la cererea lui Lucian:** toate cele 41 de mai jos (potrivite după id și filtre exacte, verificate pe card înainte de fiecare ștergere). După ștergere contul are **239 de căutări**: 168 noi + 71 vechi păstrate, toate cu e-mail pornit; niciuna din cele 41 nu mai apare. Lista (cum apăreau pe `storia.ro/ro/salvat/cautari`):
 
 | # | Card (titlu) | Rândul de sub titlu | De ce |
 |---|---|---|---|
