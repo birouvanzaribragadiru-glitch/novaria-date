@@ -2,7 +2,9 @@
    Intervalul de preț apare imediat; raportul detaliat se deschide după ce vizitatorul lasă un număr de telefon.
    Calculul: același motor ca în aplicația internă Novaria (engine.js), pe valorile de zonă actualizate zilnic
    din anunțurile monitorizate (doar cifre agregate pe zone), plus factorul străzii față de media zonei,
-   calculat automat din anunțurile de pe stradă și din jur. */
+   calculat automat din anunțurile de pe stradă și din jur. De la 1.6.0, la apartamente și case prețul pornește de la modelul
+   de evaluare Novaria (același ca în aplicația agenției), cerut serverului cu datele din formular; peste el se aplică factorii
+   pe care modelul nu-i știe (starea, compartimentarea, încălzirea…). Calculul din pagină apare imediat și rămâne rezervă. */
 (function () {
   'use strict';
   var E = window.CMA, ZC = window.NV_ZCOMBO;
@@ -282,17 +284,51 @@
   }
 
   // ---------- calcul ----------
+  // Estimarea Novaria de pe server: aceeași evaluare ca în aplicația agenției (modelul învățat din anunțuri + comparabile din zonă).
+  // Din server vin doar prețurile finale. Până răspunde serverul (sau dacă nu răspunde), rămâne calculul din pagină.
+  var NUMODEL = { compart: 1, incalzire: 1, seismic: 1, vedere: 1, material: 1, cert: 1, orientare: 1, stadiu: 1, juridic: 1, structura: 1, canal: 1, gaz: 1, asfalt: 1, front: 1 };
+  function srvKey(s) { var o = {}; Object.keys(s).sort().forEach(function (k) { if (k !== 'micro' && k !== 'microPct') o[k] = s[k]; }); return JSON.stringify(o); }
+  function srvAsk(s) {
+    if (!CFG.estUrl || (s.tip !== 'apartament' && s.tip !== 'casa')) return;
+    var key = srvKey(s); S.srv = S.srv || {};
+    if (S.srv[key] || S.srvPending === key) return;
+    clearTimeout(S.srvT);
+    S.srvT = setTimeout(function () {
+      S.srvPending = key;
+      var ctl = window.AbortController ? new AbortController() : null, tm = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+      fetch(CFG.estUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subiect: s }), credentials: 'omit', signal: ctl ? ctl.signal : undefined })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { S.srv[key] = d && d.ok && d.model > 0 ? d : { ok: false }; })
+        .catch(function () { S.srv[key] = { ok: false }; })
+        .then(function () { clearTimeout(tm); if (S.srvPending === key) S.srvPending = null; if (S.res && srvKey(S.res.s) === key && S.srv[key].ok) renderResult(); });
+    }, 450);
+  }
   function evaluate() {
     var s = subject(), d = S.data;
     var r = E.evaluate(s, [], S.zones, {}, d.params || {}, new Date());
     if (!r || !r.ok) return null;
+    var sv = S.srv && S.srv[srvKey(s)], srv = false;
+    if (sv && sv.ok && sv.model > 0 && !(sv.pondere <= 0) && r.bench && r.prices && r.prices.realist > 0) {
+      // prețul modelului (nivel „preț cerut”) adus la nivelul „preț realist” al site-ului, plus factorii pe care modelul nu-i știe,
+      // luați din calculul paginii: starea / finisajele și detaliile completate de vizitator (compartimentare, încălzire, risc seismic…)
+      var F = 1; (r.bench.factors || []).forEach(function (f) { if (NUMODEL[f.key]) F *= f.f; });
+      var bm = r.bench.base * r.bench.mult; if (r.bench.add && bm > 0) F *= (bm + r.bench.add) / bm;
+      var w = sv.pondere != null ? +sv.pondere : 1, est = sv.model * (sv.nivel || 0.9) * F;
+      var k = Math.exp(w * Math.log(est) + (1 - w) * Math.log(r.prices.realist)) / r.prices.realist;
+      if (k > 0.6 && k < 1.6) {          // dacă cele două diferă enorm, ceva e greșit: rămâne calculul din pagină
+        var R5 = function (v) { return v ? Math.round(v * k / 500) * 500 : v; };
+        r = Object.assign({}, r, { prices: Object.assign({}, r.prices, { quick: R5(r.prices.quick), realist: R5(r.prices.realist), list: R5(r.prices.list) }),
+          drivers: (r.drivers || []).map(function (x) { return Object.assign({}, x, { eur: x.eur * k }); }) });
+        srv = true;
+      }
+    }
     var z = S.zmap[s.zona], used = (z && z.u && z.u[S.tip]) || 0, compl = r.completeness || 0;
     // marja arătată vizitatorului: cât de multe anunțuri avem în zonă și cât de complet e formularul
     var m = used >= 30 ? 0.07 : used >= 10 ? 0.085 : used >= 3 ? 0.10 : 0.115;
     m += (1 - compl) * 0.04;
     if (S.tip === 'teren' && s.intravilan === false) m += 0.05;
     var P = r.prices, step = P.realist >= 100000 ? 1000 : 500;
-    return { r: r, s: s, z: z, used: used, margin: m, min: round(P.realist * (1 - m), step), max: round(P.realist * (1 + m), step), realist: P.realist, ppm: P.realist / num(s.mp) };
+    return { r: r, s: s, z: z, used: used, margin: m, srv: srv, min: round(P.realist * (1 - m), step), max: round(P.realist * (1 + m), step), realist: P.realist, ppm: P.realist / num(s.mp) };
   }
   var TIP_LBL = { apartament: 'apartament', casa: 'casă', teren: 'teren' };
   // chiria mediană din zonă (din anunțurile de închiriere) → cât ar aduce închiriată și randamentul brut la prețul realist
@@ -303,6 +339,7 @@
   }
   function basisText(x) {
     var d = S.data, z = x.z, when = dateRo(d.actualizat);
+    if (x.srv) return 'Calculat cu modelul de evaluare Novaria, învățat din ' + deN(d.anunturi, 'anunțuri') + ' din București și Ilfov, și ajustat pentru detaliile proprietății tale. Date actualizate pe ' + when + '.';
     if (x.used >= 5) return 'Calculat din ' + deN(x.used, 'anunțuri') + ' analizate în ' + z.nume + ', plus evoluția prețurilor din București și Ilfov. Date actualizate pe ' + when + '.';
     return 'Calculat din prețurile de referință ale zonei ' + z.nume + ', actualizate cu evoluția pieței (' + deN(d.anunturi, 'anunțuri') + ' monitorizate în București și Ilfov). Date actualizate pe ' + when + '. Pentru zona ta, o evaluare făcută de un consultant e mai precisă.';
   }
@@ -311,6 +348,7 @@
     $$('.nvev-lead input, .nvev-lead select').forEach(function (i) { keep[i.name] = i.type === 'checkbox' ? i.checked : i.value; });
     S.res = x;
     if (!x) { box.hidden = true; return; }
+    if (!x.srv) srvAsk(x.s);
     box.hidden = false;
     logEval(false);
     var lead = '';

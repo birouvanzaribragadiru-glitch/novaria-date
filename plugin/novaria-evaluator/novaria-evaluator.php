@@ -3,7 +3,7 @@
  * Plugin Name:       Novaria Evaluator
  * Plugin URI:        https://novaria.ro/evaluare-gratuita/
  * Description:       Evaluator online pentru apartamente, case și terenuri din București și Ilfov. Datele de piață se actualizează automat (anunțuri monitorizate de Novaria + indici de piață). Pune [novaria_evaluator] pe orice pagină. Cererile de raport detaliat se salvează la „Lead-uri evaluare” și vin pe email.
- * Version:           1.5.2
+ * Version:           1.6.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Novaria
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'NOVARIA_EV_VER', '1.5.2' );
+define( 'NOVARIA_EV_VER', '1.6.0' );
 require_once __DIR__ . '/includes/raport.php';
 require_once __DIR__ . '/includes/urmarire.php';
 define( 'NOVARIA_EV_KEY_OPT', 'novaria_ev_api_key' );   // cheia cu care aplicația internă Novaria citește evaluările de pe site
@@ -37,6 +37,7 @@ function novaria_ev_defaults() {
 		'phone'         => '0728 713 079',
 		'whatsapp'      => '40728713079',
 		'data_url'      => 'https://raw.githubusercontent.com/birouvanzaribragadiru-glitch/novaria-date/main/data/evaluator.json',
+		'est_url'       => 'https://novaria-server.mindonsteroids.workers.dev/api/public/estimare',
 		'cache_hours'   => 6,
 		'privacy_url'   => home_url( '/politica-de-confidentialitate/' ),
 		'retention_m'   => 24,
@@ -213,6 +214,7 @@ function novaria_ev_shortcode( $atts ) {
 		'whatsapp'   => preg_replace( '/\D+/', '', (string) $o['whatsapp'] ),
 		'privacyUrl' => esc_url_raw( $o['privacy_url'] ),
 		'consentVer' => NOVARIA_EV_CONSENT_VER,
+		'estUrl'     => esc_url_raw( isset( $o['est_url'] ) ? $o['est_url'] : novaria_ev_defaults()['est_url'] ),
 	);
 	// configurația stă pe element (nu într-un script separat), ca să meargă și cu plugin-uri de cache/optimizare JS
 	$main   = novaria_ev_hex( $o['color_main'], '#13233F' );
