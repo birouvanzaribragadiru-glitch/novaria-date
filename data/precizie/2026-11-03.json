@@ -1,0 +1,241 @@
+{
+ "data": "2026-11-03",
+ "anunturi_utilizabile": 20799,
+ "zone_tip": 212,
+ "esantion_pe_zona": 60,
+ "apartament": {
+  "comparabile": {
+   "n": 3339,
+   "bias": 1.014,
+   "eroare_mediana": 0.15,
+   "in10": 0.359,
+   "in20": 0.624
+  },
+  "media_zonei": {
+   "n": 3736,
+   "bias": 1.043,
+   "eroare_mediana": 0.185,
+   "in10": 0.299,
+   "in20": 0.526
+  },
+  "reper_naiv": {
+   "n": 3693,
+   "bias": 0.996,
+   "eroare_mediana": 0.159,
+   "in10": 0.35,
+   "in20": 0.595
+  }
+ },
+ "casa": {
+  "comparabile": {
+   "n": 3020,
+   "bias": 1.092,
+   "eroare_mediana": 0.215,
+   "in10": 0.285,
+   "in20": 0.477
+  },
+  "media_zonei": {
+   "n": 3467,
+   "bias": 0.91,
+   "eroare_mediana": 0.082,
+   "in10": 0.172,
+   "in20": 0.317
+  },
+  "reper_naiv": {
+   "n": 3392,
+   "bias": 1.001,
+   "eroare_mediana": 0.234,
+   "in10": 0.265,
+   "in20": 0.446
+  }
+ },
+ "completare_campuri": {
+  "an": 0.007,
+  "etaj": 0.511,
+  "etajeTotal": 0.279,
+  "stare": 0,
+  "compart": 0,
+  "incalzire": 0,
+  "camere": 0.988,
+  "strada": 0.009
+ },
+ "zone_slabe": [
+  {
+   "zona": "ciolpani",
+   "tip": "casa",
+   "n": 13,
+   "eroare_mediana": 0.599,
+   "in10": 0.231
+  },
+  {
+   "zona": "snagov",
+   "tip": "casa",
+   "n": 57,
+   "eroare_mediana": 0.553,
+   "in10": 0.123
+  },
+  {
+   "zona": "timpuri-noi",
+   "tip": "casa",
+   "n": 11,
+   "eroare_mediana": 0.546,
+   "in10": 0.182
+  },
+  {
+   "zona": "victoriei",
+   "tip": "casa",
+   "n": 54,
+   "eroare_mediana": 0.501,
+   "in10": 0.093
+  },
+  {
+   "zona": "dacia",
+   "tip": "casa",
+   "n": 17,
+   "eroare_mediana": 0.498,
+   "in10": 0.176
+  },
+  {
+   "zona": "aviatorilor",
+   "tip": "casa",
+   "n": 16,
+   "eroare_mediana": 0.461,
+   "in10": 0.125
+  },
+  {
+   "zona": "herastrau",
+   "tip": "casa",
+   "n": 20,
+   "eroare_mediana": 0.445,
+   "in10": 0.15
+  },
+  {
+   "zona": "domenii",
+   "tip": "casa",
+   "n": 25,
+   "eroare_mediana": 0.432,
+   "in10": 0.08
+  },
+  {
+   "zona": "aparatorii",
+   "tip": "casa",
+   "n": 25,
+   "eroare_mediana": 0.43,
+   "in10": 0.16
+  },
+  {
+   "zona": "giurgiului",
+   "tip": "casa",
+   "n": 36,
+   "eroare_mediana": 0.424,
+   "in10": 0.222
+  },
+  {
+   "zona": "baneasa",
+   "tip": "casa",
+   "n": 59,
+   "eroare_mediana": 0.418,
+   "in10": 0.203
+  },
+  {
+   "zona": "dacia",
+   "tip": "apartament",
+   "n": 32,
+   "eroare_mediana": 0.414,
+   "in10": 0.25
+  },
+  {
+   "zona": "mosilor",
+   "tip": "casa",
+   "n": 54,
+   "eroare_mediana": 0.407,
+   "in10": 0.259
+  },
+  {
+   "zona": "iancului",
+   "tip": "casa",
+   "n": 34,
+   "eroare_mediana": 0.4,
+   "in10": 0.235
+  },
+  {
+   "zona": "1-mai",
+   "tip": "casa",
+   "n": 13,
+   "eroare_mediana": 0.389,
+   "in10": 0.231
+  }
+ ],
+ "zone_bune": [
+  {
+   "zona": "pacii",
+   "tip": "casa",
+   "n": 20,
+   "eroare_mediana": 0,
+   "in10": 0.85
+  },
+  {
+   "zona": "andronache",
+   "tip": "casa",
+   "n": 45,
+   "eroare_mediana": 0,
+   "in10": 0.622
+  },
+  {
+   "zona": "militari-residence",
+   "tip": "apartament",
+   "n": 60,
+   "eroare_mediana": 0.055,
+   "in10": 0.717
+  },
+  {
+   "zona": "ozana",
+   "tip": "apartament",
+   "n": 14,
+   "eroare_mediana": 0.058,
+   "in10": 0.643
+  },
+  {
+   "zona": "bragadiru",
+   "tip": "apartament",
+   "n": 60,
+   "eroare_mediana": 0.06,
+   "in10": 0.667
+  },
+  {
+   "zona": "militari",
+   "tip": "casa",
+   "n": 41,
+   "eroare_mediana": 0.065,
+   "in10": 0.537
+  },
+  {
+   "zona": "damaroaia",
+   "tip": "apartament",
+   "n": 17,
+   "eroare_mediana": 0.068,
+   "in10": 0.588
+  },
+  {
+   "zona": "antiaeriana",
+   "tip": "apartament",
+   "n": 60,
+   "eroare_mediana": 0.077,
+   "in10": 0.617
+  },
+  {
+   "zona": "dragomiresti-vale",
+   "tip": "casa",
+   "n": 40,
+   "eroare_mediana": 0.078,
+   "in10": 0.55
+  },
+  {
+   "zona": "ferentari",
+   "tip": "apartament",
+   "n": 59,
+   "eroare_mediana": 0.079,
+   "in10": 0.576
+  }
+ ]
+}

@@ -1,19 +1,19 @@
 {
- "data": "2026-11-02",
+ "data": "2026-11-03",
  "anunturi_utilizabile": 20799,
  "zone_tip": 212,
  "esantion_pe_zona": 60,
  "apartament": {
   "comparabile": {
    "n": 3339,
-   "bias": 1.013,
+   "bias": 1.014,
    "eroare_mediana": 0.15,
-   "in10": 0.361,
-   "in20": 0.625
+   "in10": 0.359,
+   "in20": 0.624
   },
   "media_zonei": {
    "n": 3736,
-   "bias": 1.042,
+   "bias": 1.043,
    "eroare_mediana": 0.185,
    "in10": 0.299,
    "in20": 0.526
@@ -185,8 +185,8 @@
    "zona": "militari-residence",
    "tip": "apartament",
    "n": 60,
-   "eroare_mediana": 0.049,
-   "in10": 0.75
+   "eroare_mediana": 0.055,
+   "in10": 0.717
   },
   {
    "zona": "ozana",
@@ -220,7 +220,7 @@
    "zona": "antiaeriana",
    "tip": "apartament",
    "n": 60,
-   "eroare_mediana": 0.076,
+   "eroare_mediana": 0.077,
    "in10": 0.617
   },
   {
