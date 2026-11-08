@@ -25,5 +25,14 @@
   "casa_eroare": 0.215,
   "casa_in10": 0.285,
   "an_completat": 0.007
+ },
+ {
+  "data": "2026-11-08",
+  "n": 20799,
+  "ap_eroare": 0.15,
+  "ap_in10": 0.359,
+  "casa_eroare": 0.216,
+  "casa_in10": 0.285,
+  "an_completat": 0.007
  }
 ]

@@ -1,5 +1,5 @@
 {
- "data": "2026-11-03",
+ "data": "2026-11-08",
  "anunturi_utilizabile": 20799,
  "zone_tip": 212,
  "esantion_pe_zona": 60,
@@ -9,14 +9,14 @@
    "bias": 1.014,
    "eroare_mediana": 0.15,
    "in10": 0.359,
-   "in20": 0.624
+   "in20": 0.625
   },
   "media_zonei": {
    "n": 3736,
-   "bias": 1.043,
-   "eroare_mediana": 0.185,
+   "bias": 1.042,
+   "eroare_mediana": 0.184,
    "in10": 0.299,
-   "in20": 0.526
+   "in20": 0.528
   },
   "reper_naiv": {
    "n": 3693,
@@ -30,16 +30,16 @@
   "comparabile": {
    "n": 3020,
    "bias": 1.092,
-   "eroare_mediana": 0.215,
+   "eroare_mediana": 0.216,
    "in10": 0.285,
    "in20": 0.477
   },
   "media_zonei": {
    "n": 3467,
-   "bias": 0.91,
-   "eroare_mediana": 0.082,
-   "in10": 0.172,
-   "in20": 0.317
+   "bias": 0.963,
+   "eroare_mediana": 0.145,
+   "in10": 0.193,
+   "in20": 0.361
   },
   "reper_naiv": {
    "n": 3392,
@@ -78,7 +78,7 @@
    "zona": "timpuri-noi",
    "tip": "casa",
    "n": 11,
-   "eroare_mediana": 0.546,
+   "eroare_mediana": 0.545,
    "in10": 0.182
   },
   {
@@ -92,7 +92,7 @@
    "zona": "dacia",
    "tip": "casa",
    "n": 17,
-   "eroare_mediana": 0.498,
+   "eroare_mediana": 0.499,
    "in10": 0.176
   },
   {
@@ -106,7 +106,7 @@
    "zona": "herastrau",
    "tip": "casa",
    "n": 20,
-   "eroare_mediana": 0.445,
+   "eroare_mediana": 0.446,
    "in10": 0.15
   },
   {
@@ -162,7 +162,7 @@
    "zona": "1-mai",
    "tip": "casa",
    "n": 13,
-   "eroare_mediana": 0.389,
+   "eroare_mediana": 0.388,
    "in10": 0.231
   }
  ],
@@ -231,11 +231,11 @@
    "in10": 0.55
   },
   {
-   "zona": "ferentari",
+   "zona": "doamna-ghica",
    "tip": "apartament",
-   "n": 59,
+   "n": 23,
    "eroare_mediana": 0.079,
-   "in10": 0.576
+   "in10": 0.652
   }
  ]
 }
