@@ -1,62 +1,62 @@
 {
- "data": "2026-11-08",
- "anunturi_utilizabile": 20799,
+ "data": "2026-11-09",
+ "anunturi_utilizabile": 22055,
  "zone_tip": 212,
  "esantion_pe_zona": 60,
  "apartament": {
   "comparabile": {
-   "n": 3339,
-   "bias": 1.014,
-   "eroare_mediana": 0.15,
-   "in10": 0.359,
-   "in20": 0.625
+   "n": 3503,
+   "bias": 1.017,
+   "eroare_mediana": 0.146,
+   "in10": 0.366,
+   "in20": 0.614
   },
   "media_zonei": {
-   "n": 3736,
-   "bias": 1.042,
-   "eroare_mediana": 0.184,
-   "in10": 0.299,
-   "in20": 0.528
+   "n": 3899,
+   "bias": 1.05,
+   "eroare_mediana": 0.187,
+   "in10": 0.3,
+   "in20": 0.53
   },
   "reper_naiv": {
-   "n": 3693,
-   "bias": 0.996,
-   "eroare_mediana": 0.159,
-   "in10": 0.35,
-   "in20": 0.595
+   "n": 3850,
+   "bias": 0.999,
+   "eroare_mediana": 0.164,
+   "in10": 0.345,
+   "in20": 0.585
   }
  },
  "casa": {
   "comparabile": {
-   "n": 3020,
-   "bias": 1.092,
-   "eroare_mediana": 0.216,
-   "in10": 0.285,
-   "in20": 0.477
+   "n": 3183,
+   "bias": 1.097,
+   "eroare_mediana": 0.206,
+   "in10": 0.276,
+   "in20": 0.48
   },
   "media_zonei": {
-   "n": 3467,
-   "bias": 0.963,
-   "eroare_mediana": 0.145,
-   "in10": 0.193,
-   "in20": 0.361
+   "n": 3604,
+   "bias": 0.874,
+   "eroare_mediana": 0.129,
+   "in10": 0.152,
+   "in20": 0.278
   },
   "reper_naiv": {
-   "n": 3392,
-   "bias": 1.001,
-   "eroare_mediana": 0.234,
-   "in10": 0.265,
-   "in20": 0.446
+   "n": 3525,
+   "bias": 1.002,
+   "eroare_mediana": 0.236,
+   "in10": 0.257,
+   "in20": 0.441
   }
  },
  "completare_campuri": {
   "an": 0.007,
-  "etaj": 0.511,
-  "etajeTotal": 0.279,
+  "etaj": 0.513,
+  "etajeTotal": 0.297,
   "stare": 0,
   "compart": 0,
   "incalzire": 0,
-  "camere": 0.988,
+  "camere": 0.989,
   "strada": 0.009
  },
  "zone_slabe": [
@@ -68,11 +68,11 @@
    "in10": 0.231
   },
   {
-   "zona": "snagov",
+   "zona": "victoriei",
    "tip": "casa",
-   "n": 57,
-   "eroare_mediana": 0.553,
-   "in10": 0.123
+   "n": 53,
+   "eroare_mediana": 0.557,
+   "in10": 0.151
   },
   {
    "zona": "timpuri-noi",
@@ -82,18 +82,18 @@
    "in10": 0.182
   },
   {
-   "zona": "victoriei",
+   "zona": "snagov",
    "tip": "casa",
-   "n": 54,
-   "eroare_mediana": 0.501,
-   "in10": 0.093
+   "n": 58,
+   "eroare_mediana": 0.495,
+   "in10": 0.069
   },
   {
-   "zona": "dacia",
+   "zona": "1-mai",
    "tip": "casa",
-   "n": 17,
-   "eroare_mediana": 0.499,
-   "in10": 0.176
+   "n": 20,
+   "eroare_mediana": 0.493,
+   "in10": 0.25
   },
   {
    "zona": "aviatorilor",
@@ -117,11 +117,11 @@
    "in10": 0.08
   },
   {
-   "zona": "aparatorii",
+   "zona": "iancului",
    "tip": "casa",
-   "n": 25,
-   "eroare_mediana": 0.43,
-   "in10": 0.16
+   "n": 39,
+   "eroare_mediana": 0.429,
+   "in10": 0.256
   },
   {
    "zona": "giurgiului",
@@ -131,38 +131,38 @@
    "in10": 0.222
   },
   {
+   "zona": "mosilor",
+   "tip": "casa",
+   "n": 56,
+   "eroare_mediana": 0.408,
+   "in10": 0.286
+  },
+  {
+   "zona": "dorobanti",
+   "tip": "casa",
+   "n": 55,
+   "eroare_mediana": 0.398,
+   "in10": 0.218
+  },
+  {
    "zona": "baneasa",
    "tip": "casa",
-   "n": 59,
-   "eroare_mediana": 0.418,
-   "in10": 0.203
+   "n": 60,
+   "eroare_mediana": 0.397,
+   "in10": 0.217
   },
   {
    "zona": "dacia",
    "tip": "apartament",
-   "n": 32,
-   "eroare_mediana": 0.414,
-   "in10": 0.25
+   "n": 40,
+   "eroare_mediana": 0.395,
+   "in10": 0.175
   },
   {
-   "zona": "mosilor",
+   "zona": "aparatorii",
    "tip": "casa",
-   "n": 54,
-   "eroare_mediana": 0.407,
-   "in10": 0.259
-  },
-  {
-   "zona": "iancului",
-   "tip": "casa",
-   "n": 34,
-   "eroare_mediana": 0.4,
-   "in10": 0.235
-  },
-  {
-   "zona": "1-mai",
-   "tip": "casa",
-   "n": 13,
-   "eroare_mediana": 0.388,
+   "n": 26,
+   "eroare_mediana": 0.386,
    "in10": 0.231
   }
  ],
@@ -170,16 +170,23 @@
   {
    "zona": "pacii",
    "tip": "casa",
-   "n": 20,
+   "n": 21,
    "eroare_mediana": 0,
-   "in10": 0.85
+   "in10": 0.81
   },
   {
    "zona": "andronache",
    "tip": "casa",
-   "n": 45,
+   "n": 47,
    "eroare_mediana": 0,
-   "in10": 0.622
+   "in10": 0.617
+  },
+  {
+   "zona": "doamna-ghica",
+   "tip": "apartament",
+   "n": 30,
+   "eroare_mediana": 0.042,
+   "in10": 0.633
   },
   {
    "zona": "militari-residence",
@@ -189,25 +196,25 @@
    "in10": 0.717
   },
   {
-   "zona": "ozana",
-   "tip": "apartament",
-   "n": 14,
+   "zona": "vidra",
+   "tip": "casa",
+   "n": 60,
    "eroare_mediana": 0.058,
-   "in10": 0.643
+   "in10": 0.717
   },
   {
-   "zona": "bragadiru",
-   "tip": "apartament",
-   "n": 60,
-   "eroare_mediana": 0.06,
-   "in10": 0.667
+   "zona": "clinceni",
+   "tip": "casa",
+   "n": 58,
+   "eroare_mediana": 0.062,
+   "in10": 0.586
   },
   {
    "zona": "militari",
    "tip": "casa",
-   "n": 41,
-   "eroare_mediana": 0.065,
-   "in10": 0.537
+   "n": 42,
+   "eroare_mediana": 0.068,
+   "in10": 0.548
   },
   {
    "zona": "damaroaia",
@@ -217,25 +224,18 @@
    "in10": 0.588
   },
   {
-   "zona": "antiaeriana",
+   "zona": "ozana",
    "tip": "apartament",
-   "n": 60,
-   "eroare_mediana": 0.077,
-   "in10": 0.617
+   "n": 16,
+   "eroare_mediana": 0.071,
+   "in10": 0.563
   },
   {
    "zona": "dragomiresti-vale",
    "tip": "casa",
-   "n": 40,
-   "eroare_mediana": 0.078,
-   "in10": 0.55
-  },
-  {
-   "zona": "doamna-ghica",
-   "tip": "apartament",
-   "n": 23,
-   "eroare_mediana": 0.079,
-   "in10": 0.652
+   "n": 43,
+   "eroare_mediana": 0.072,
+   "in10": 0.535
   }
  ]
 }
