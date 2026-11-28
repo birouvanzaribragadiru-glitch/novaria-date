@@ -19,7 +19,7 @@ REAMINTIRE = int(CFG.get('reamintire_ore', 3)) * 3600
 PRAG_DISC_GB = float(CFG.get('prag_disc_gb', 15))
 LINISTE = CFG.get('liniste', [23, 7])          # între orele astea, mesajele vin fără sunet
 blocaj = threading.Lock()
-VERSIUNE = '1.3'
+VERSIUNE = '1.4'
 SURSA = CFG.get('actualizari_url', 'https://raw.githubusercontent.com/birouvanzaribragadiru-glitch/novaria-date/main/sistem/')
 
 
@@ -193,7 +193,7 @@ def raport(acum=None):
     linii += ['', 'De la raportul trecut:'] + [f"• {datetime.fromtimestamp(e['la']):%H:%M} {e['text']}" for e in ev] if ev \
         else ['', 'Liniște: nicio problemă de la raportul trecut.']
     linii += ['', f"Mac mini-ul e pornit din {ora(st.get('pornit_la'))}.",
-              'Ce ai lucrat ieri, ce urmează și ideile vin de la Claude, în aplicația Claude.']
+              'Ziua de ieri, ce a rămas deschis, ideile și ziarul zilei (AI + imobiliare) vin de la Claude, în aplicația Claude.']
     return '\n'.join(linii)
 
 

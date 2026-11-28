@@ -7,8 +7,8 @@ Fiecare felie merge cap-coadă și se verifică singură. Se lucrează doar pe c
 | # | Felia | Ce face cap-coadă | Depinde de | Stare |
 |---|---|---|---|---|
 | 1 | Panou + alarme | Verifică CryptoRadar, Novaria Studio, colectorul, Chrome, discul, repornirile; alarmă pe Telegram; /stare; panou web în rețeaua locală | — | ✓ merge pe Mac mini (28 nov.) |
-| 2 | Raportul de dimineață | 07:30 pe Telegram (Mac mini, gratis): ce s-a întâmplat noaptea + starea acum. 06:59 sarcina programată Claude „Sistemul AI: raportul de dimineață” (notificare în aplicația Claude): ce ai lucrat ieri din chaturi, ce a rămas deschis, 3 idei. Fără e-mailuri. | 1 | construită și testată; în v1.3 |
-| 3 | Ziarul zilei | Știri AI + imobiliare, rezumate scurt în română (refolosește știrile evaluatorului) | 1 | |
+| 2 | Raportul de dimineață | 07:30 pe Telegram (Mac mini, gratis): ce s-a întâmplat noaptea + starea acum. 06:59 sarcina programată Claude „Sistemul AI: raportul de dimineață” (notificare în aplicația Claude): ce ai lucrat ieri din chaturi, ce a rămas deschis, 3 idei. Fără e-mailuri. | 1 | ✓ instalată pe Mac mini (v1.3, 28 nov.); primele rapoarte pe 29 nov. |
+| 3 | Ziarul zilei | Partea a doua a raportului Claude de la 06:59: 3–4 știri AI (mai întâi uneltele lui) + 2–3 de imobiliare (România, București–Ilfov), din ultimele 48 de ore, fiecare cu „Pentru tine”; caută pe web (evaluatorul nu are încă știri) | 1 | ✓ în sarcina programată (28 nov.); prima ediție pe 29 nov. |
 | 4 | Memorie de business | Oameni, lead-uri, clienți, clipuri publicate — din Gmail și evaluator | 2 | |
 | 5 | Intrarea anunțului | Folderul proprietății + 2 rânduri „cum vreau” → lucrare nouă în panou | 1 | |
 | 6 | Poze | HDR în Lightroom, lumină egalizată, camere curățate → aprobare pe Telegram | 5 | |

@@ -1,6 +1,6 @@
 # Stare — 28 nov. 2026
 
-**Faza:** felia 1 (panou + alarme) merge pe Mac mini (confirmat de Lucian pe 28 nov.). Felia 2 (raportul de dimineață) și actualizarea automată sunt construite și testate, în versiunea 1.3. Lucian o instalează de mână o singură dată; de acolo Mac mini-ul își ia singur versiunile noi.
+**Faza:** v1.3 instalată pe Mac mini pe 28 nov. (ultima instalare de mână): panou, alarme, raportul de la 07:30, actualizare automată. Felia 3 (ziarul zilei) e în sarcina programată Claude. v1.4 (doar textul raportului de pe Telegram, care anunță ziarul) e publicată ca primă actualizare automată reală: Lucian trebuie să primească „⬆️ s-a actualizat singur: v1.3 → v1.4” în cel mult o oră. Dacă nu vine, e de verificat actualizarea.
 
 **Versiunea 1.3 (de instalat o dată):**
 - **Actualizare automată.** O dată pe oră, și la cerere cu /versiune, agentul citește `versiune.json` din depozitul public novaria-date, folderul `sistem/`. Ia doar fișierele din listă, fiecare verificat cu SHA-256, iar codul trebuie să compileze. Nu se poate înlocui așa nici `config.json`, nici lansatorul. Agentul se repornește și anunță pe Telegram „⬆️ s-a actualizat singur” și ce e nou.
@@ -15,7 +15,7 @@
 
 **Bug reparat în v1.1:** chat ID-ul fusese salvat greșit (numele botului în loc de număr), așa că Telegram refuza mesajele fără să se vadă. Acum instalarea așteaptă /start, acceptă doar un ID numeric, trimite o probă și se oprește dacă proba nu ajunge. Panoul arată când alarmele nu ajung.
 
-**Următorul pas:** Lucian instalează v1.3 → primește „✅ Legat” → mâine vin raportul Claude la 06:59 și cel de pe Telegram la 07:30 → verificăm amândouă. Apoi felia 3 (ziarul zilei).
+**Următorul pas:** confirmarea actualizării la v1.4; pe 29 nov. verificăm raportul Claude (06:59, cu ziarul) și pe cel de pe Telegram (07:30). Apoi felia 4 (memoria de business) sau 5 (intrarea anunțului), cum alege Lucian.
 
 **Probleme deschise:**
 - Panoul se vede doar în rețeaua locală; de oriunde merge /stare în Telegram.

@@ -157,6 +157,7 @@ os.environ['NO_PROXY'] = os.environ['no_proxy'] = '127.0.0.1,localhost'
 DEP = tempfile.mkdtemp()
 threading.Thread(target=http.server.ThreadingHTTPServer(('127.0.0.1', 18799), functools.partial(http.server.SimpleHTTPRequestHandler, directory=DEP)).serve_forever, daemon=True).start()
 s.SURSA = 'http://127.0.0.1:18799/'
+s.VERSIUNE = '1.3'                                    # testele de actualizare pornesc de la o versiune fixă
 open(os.path.join(ACASA, 'sistem.py'), 'w').write('# versiunea instalata\n')
 def publica(versiune, fisiere, sha_gresit=False, noutati='Raport mai clar.'):
     man = {'versiune': versiune, 'noutati': noutati, 'fisiere': []}
