@@ -15,7 +15,15 @@
 
 **Bug reparat în v1.1:** chat ID-ul fusese salvat greșit (numele botului în loc de număr), așa că Telegram refuza mesajele fără să se vadă. Acum instalarea așteaptă /start, acceptă doar un ID numeric, trimite o probă și se oprește dacă proba nu ajunge. Panoul arată când alarmele nu ajung.
 
-**Următorul pas:** confirmarea actualizării la v1.4; pe 29 nov. verificăm raportul Claude (06:59, cu ziarul) și pe cel de pe Telegram (07:30). Apoi felia 4 (memoria de business) sau 5 (intrarea anunțului), cum alege Lucian.
+**Feliile 4–9 (28 nov.):** felia 4 a fost sărită la cererea lui Lucian. Feliile 5–9 sunt în skill-ul `banda-anunt`, propus lui Lucian pentru salvare.
+
+**Ce așteaptă după Lucian:**
+1. să confirme că a primit „⬆️ v1.3 → v1.4”;
+2. să salveze skill-ul `banda-anunt` din cardul din chat;
+3. să lege în vidIQ Instagram-ul, Pagina de Facebook și TikTok-ul Novaria, plus canalul de YouTube pe care merg reel-urile (acum e legat doar Ghidul Stoic);
+4. prima rulare a benzii pe o proprietate reală, pe MacBook, cu Lightroom și DaVinci deschise.
+
+**Următorul pas:** 29 nov.: verificăm raportul Claude (06:59, cu ziarul) și pe cel de pe Telegram (07:30); apoi prima bandă pe o proprietate.
 
 **Probleme deschise:**
 - Panoul se vede doar în rețeaua locală; de oriunde merge /stare în Telegram.

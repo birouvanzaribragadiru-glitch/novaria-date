@@ -12,4 +12,8 @@
 - **28 nov. 2026** — Gmail-ul legat de Claude e contul folosit pentru colectarea anunțurilor, nu contact@novaria.ro. *De lămurit când adăugăm e-mailurile.*
 - **28 nov. 2026** — Actualizare automată: versiunile noi se publică în depozitul public novaria-date, folderul sistem/ (doar cod, fără tokenuri), iar Mac mini-ul le ia singur o dată pe oră. Lansatorul revine la versiunea veche dacă cea nouă nu pornește. *Motiv: Lucian nu vrea să reinstaleze la fiecare versiune; a ales novaria-date.*
 - **28 nov. 2026** — Ziarul zilei intră în același mesaj Claude de dimineață (o singură notificare), după partea cu ziua de ieri. Știrile le caută pe web: aplicația evaluatorului nu are încă tabul de știri. *Motiv: o singură lectură dimineața; nimic de instalat.*
-- **Deschis** — Cine face tăietura reel-ului (recomandat: Lucian, în DaVinci; restul automat).
+- **28 nov. 2026** — Felia 4 (memoria de business) nu se face. *Motiv: Lucian: „dacă Claude reține deja tot, nu face de 2 ori”.*
+- **28 nov. 2026** — Feliile 5–9 sunt un skill, `banda-anunt`, care leagă în ordine skill-urile existente (`poze-hdr`, `egalizare-lumina`, `virtual-staging`, `anunt-novaria`, `descrieri-reel-novaria`), cu 4 aprobări și fișa `BANDA.md` în folderul proprietății. Rulează pe MacBook, unde sunt Lightroom și DaVinci. *Motiv: pașii există deja și merg; nu-i rescriem, îi legăm.*
+- **28 nov. 2026** — Postarea pe Instagram, Facebook, TikTok și YouTube se face prin vidIQ (ciornă, „da”, publicare), nu printr-o aplicație proprie. Asta înlocuiește decizia cu auditul TikTok. *Motiv: vidIQ publică deja pe toate patru, gratis pentru ele, fără aplicație Meta proprie și fără audit TikTok.*
+- **28 nov. 2026** — Tăietura reel-ului: implicit o face Lucian în DaVinci (decizia lui din nov.: lucrează hibrid). Claude taie doar dacă i se cere pentru o proprietate anume.
+- **Deschis** — nimic.
