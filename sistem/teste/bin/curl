@@ -1,0 +1,10 @@
+#!/bin/bash
+# curl fals pentru Telegram: metoda din url-ul de pe stdin; getUpdates e gol primele $GOL ori (Lucian n-a scris încă /start)
+U=$(cat); M=${U##*/}; M=${M%\"*}
+N=$(cat "$FAKE/n_upd" 2>/dev/null || echo 0)
+case "$M" in
+  getMe) [[ "$U" == *"bot123:ABC/"* ]] && echo '{"ok":true,"result":{"username":"botul_de_test"}}' || echo '{"ok":false,"description":"Unauthorized"}' ;;
+  getUpdates) echo $((N+1)) > "$FAKE/n_upd"
+    if [ "$N" -ge "${GOL:-0}" ]; then echo '{"ok":true,"result":[{"update_id":7,"message":{"chat":{"id":555111,"type":"private"},"text":"/start"}}]}'; else echo '{"ok":true,"result":[]}'; fi ;;
+  sendMessage) echo "$*" > "$FAKE/trimis.txt"; [ "${TRIMITE_OK:-1}" = 1 ] && echo '{"ok":true}' || echo '{"ok":false,"description":"Bad Request: chat not found"}' ;;
+esac

@@ -1,0 +1,2 @@
+#!/bin/bash
+grep -qxF "$2" "$FAKE/procese.txt" 2>/dev/null

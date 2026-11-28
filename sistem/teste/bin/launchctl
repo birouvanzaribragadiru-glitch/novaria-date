@@ -1,0 +1,18 @@
+#!/bin/bash
+# launchctl fals: starea joburilor vine din $FAKE/joburi.json
+F="$FAKE/joburi.json"
+case "$1" in
+  list)
+    python3 -I - "$F" "$2" <<'PY'
+import json, sys
+j = json.load(open(sys.argv[1])).get(sys.argv[2])
+if j is None:
+    print('Could not find service "%s" in domain for port' % sys.argv[2], file=sys.stderr); sys.exit(113)
+print('{\n\t"LimitLoadToSessionType" = "Aqua";\n\t"Label" = "%s";' % sys.argv[2])
+if j.get("pid"): print('\t"PID" = %d;' % j["pid"])
+print('\t"LastExitStatus" = %d;\n};' % j.get("exit", 0))
+PY
+    ;;
+  bootstrap|bootout) echo "$*" >> "$FAKE/launchctl_apeluri.txt"
+    if [ "$1" = bootstrap ]; then python3 -I -c "import json,sys;f=sys.argv[1];d=json.load(open(f));d['ro.lucian.sistemai']={'pid':999};json.dump(d,open(f,'w'))" "$F"; fi ;;
+esac

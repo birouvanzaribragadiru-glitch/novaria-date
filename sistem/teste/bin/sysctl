@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "{ sec = $(cat "$FAKE/boot.txt"), usec = 0 } Thu Nov 26 10:00:00 2026"
